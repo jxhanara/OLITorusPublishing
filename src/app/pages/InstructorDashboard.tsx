@@ -1,0 +1,197 @@
+import { useState } from "react";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+import { UpdateNotificationBanner } from "../components/UpdateNotificationBanner";
+import { ChevronRight, BookOpen, Users, TrendingUp, Clock } from "lucide-react";
+
+export function InstructorDashboard() {
+  const [showNotification, setShowNotification] = useState(true);
+
+  const handleViewChanges = () => {
+    setShowNotification(false);
+    window.scrollTo({ top: document.getElementById("recent-updates")?.offsetTop, behavior: "smooth" });
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Update Notification */}
+      {showNotification && (
+        <UpdateNotificationBanner
+          message="New content updates are available for your course. 2 pages have been modified."
+          onViewChanges={handleViewChanges}
+          autoDismissDelay={15000}
+        />
+      )}
+
+      {/* Header */}
+      <div className="border-b border-border px-6 py-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+          <span>UX Publication Project</span>
+          <ChevronRight className="w-4 h-4" />
+          <span className="text-foreground">Instructor</span>
+        </div>
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground mb-1">Instructor Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Course overview and recent updates</p>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="px-6 py-6 space-y-6">
+        {/* Course Overview */}
+        <div className="grid grid-cols-4 gap-4">
+          <div className="border border-border rounded-lg p-4 bg-card">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <Users className="w-4 h-4" />
+              <span className="text-sm">Total Students</span>
+            </div>
+            <div className="text-3xl font-semibold text-foreground">247</div>
+          </div>
+          <div className="border border-border rounded-lg p-4 bg-card">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <BookOpen className="w-4 h-4" />
+              <span className="text-sm">Active Modules</span>
+            </div>
+            <div className="text-3xl font-semibold text-foreground">24</div>
+          </div>
+          <div className="border border-border rounded-lg p-4 bg-card">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <TrendingUp className="w-4 h-4" />
+              <span className="text-sm">Avg. Completion</span>
+            </div>
+            <div className="text-3xl font-semibold text-foreground">78%</div>
+          </div>
+          <div className="border border-border rounded-lg p-4 bg-card">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <Clock className="w-4 h-4" />
+              <span className="text-sm">Last Updated</span>
+            </div>
+            <div className="text-lg font-semibold text-foreground">2 hours ago</div>
+          </div>
+        </div>
+
+        {/* Recent Updates Section */}
+        <div id="recent-updates" className="border border-border rounded-lg bg-card">
+          <div className="border-b border-border px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold text-foreground">Recent Content Updates</h2>
+                <p className="text-sm text-muted-foreground">
+                  Review the latest changes to your course content
+                </p>
+              </div>
+              <Badge className="bg-primary/20 text-primary">2 New Updates</Badge>
+            </div>
+          </div>
+          <div className="p-6 space-y-4">
+            {/* Update 1 */}
+            <div className="p-4 border border-border rounded-lg hover:bg-accent/50 transition-colors">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-foreground">Introduction</h3>
+                    <Badge className="bg-chart-2/20 text-chart-2">Published</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Updated course overview description with modern web development focus
+                  </p>
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
+                    <span>Modified by Sarah Chen</span>
+                    <span>•</span>
+                    <span>March 23, 2:30 PM</span>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm">
+                  View Changes
+                </Button>
+              </div>
+            </div>
+
+            {/* Update 2 */}
+            <div className="p-4 border border-border rounded-lg hover:bg-accent/50 transition-colors">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-foreground">Module 1</h3>
+                    <Badge className="bg-chart-2/20 text-chart-2">Published</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Replaced hero image with updated branding assets
+                  </p>
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
+                    <span>Modified by Michael Rodriguez</span>
+                    <span>•</span>
+                    <span>March 23, 11:15 AM</span>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm">
+                  View Changes
+                </Button>
+              </div>
+            </div>
+
+            {/* Update 3 - Older */}
+            <div className="p-4 border border-border rounded-lg hover:bg-accent/50 transition-colors opacity-60">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-foreground">Quiz Section</h3>
+                    <Badge className="bg-muted text-muted-foreground">Published</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Reorganized question order for better learning progression
+                  </p>
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
+                    <span>Modified by Emma Wilson</span>
+                    <span>•</span>
+                    <span>March 22, 4:45 PM</span>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm">
+                  View Changes
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Course Sections */}
+        <div className="border border-border rounded-lg bg-card">
+          <div className="border-b border-border px-6 py-4">
+            <h2 className="font-semibold text-foreground">Course Sections</h2>
+            <p className="text-sm text-muted-foreground">All active learning modules in your course</p>
+          </div>
+          <div className="p-6 space-y-2">
+            {[
+              { name: "Introduction", students: 247, completion: 95 },
+              { name: "Module 1: HTML Basics", students: 235, completion: 82 },
+              { name: "Module 2: CSS Styling", students: 198, completion: 71 },
+              { name: "Module 3: JavaScript", students: 167, completion: 64 },
+              { name: "Final Project", students: 89, completion: 36 },
+            ].map((section, idx) => (
+              <div
+                key={idx}
+                className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-accent/50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <BookOpen className="w-4 h-4 text-muted-foreground" />
+                  <span className="font-medium text-foreground">{section.name}</span>
+                </div>
+                <div className="flex items-center gap-6 text-sm">
+                  <span className="text-muted-foreground">{section.students} students</span>
+                  <span className="text-muted-foreground">{section.completion}% completion</span>
+                  <div className="w-24 bg-muted rounded-full h-2">
+                    <div
+                      className="bg-primary h-2 rounded-full"
+                      style={{ width: `${section.completion}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

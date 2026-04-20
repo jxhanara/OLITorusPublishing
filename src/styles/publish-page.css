@@ -1,0 +1,97 @@
+/* OLI Publish screen — aligns with design tokens (Open Sans, #0D0C0F shell, table chrome) */
+
+.ol-publish-page {
+  min-height: 100%;
+  background-color: #0d0c0f;
+  color: #ffffff;
+  font-family: var(--font-family-open), ui-sans-serif, system-ui, sans-serif;
+}
+
+.ol-publish-page .ol-publish-inner {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 1536px;
+  padding: 4px 32px 32px;
+}
+
+@media (max-width: 640px) {
+  .ol-publish-page .ol-publish-inner {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+.ol-publish-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  outline: 1px solid #525252;
+  outline-offset: -1px;
+}
+
+.ol-publish-page .ol-publish-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.ol-publish-page .ol-publish-table thead tr {
+  border-bottom: 1px solid #525252;
+}
+
+.ol-publish-page .ol-publish-table th {
+  background-color: #525252;
+  border-right: 1px solid #3b3740;
+  border-bottom: 1px solid #3b3740;
+  color: #d4d4d4;
+  font-weight: 600;
+  text-align: left;
+  padding: 8px;
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+
+.ol-publish-page .ol-publish-table th:last-child {
+  border-right: none;
+}
+
+.ol-publish-page .ol-publish-table tbody tr {
+  border-bottom: 1px solid #525252;
+  transition: background-color 0.15s ease;
+}
+
+.ol-publish-page .ol-publish-table tbody tr:hover {
+  background-color: rgba(38, 38, 38, 0.65);
+}
+
+.ol-publish-page .ol-publish-table td {
+  border-right: 1px solid #525252;
+  color: #d4d4d4;
+  padding: 8px;
+  vertical-align: middle;
+}
+
+.ol-publish-page .ol-publish-table td:last-child {
+  border-right: none;
+}
+
+.ol-publish-page .ol-publish-table .ol-sort-chevron {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.ol-publish-controls .ol-publish-input,
+.ol-publish-controls [data-slot="select-trigger"] {
+  background-color: #262626;
+  border-color: #525252;
+  color: #d4d4d4;
+}
+
+.ol-publish-controls .ol-publish-input::placeholder {
+  color: #737373;
+}
+
+.ol-publish-divider {
+  border-top: 1px solid #e5e5e5;
+}
