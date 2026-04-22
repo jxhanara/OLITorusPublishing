@@ -6,7 +6,11 @@ import { Textarea } from "../components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { AutoPushConfirmationModal } from "../components/AutoPushConfirmationModal";
 import { PublishProgressBar } from "../components/PublishProgressBar";
-import { PublishHistorySection } from "../components/PublishHistorySection";
+import {
+  PublishHistorySection,
+  getDefaultIncludedPendingChangeIds,
+  getPendingChangeCount,
+} from "../components/PublishHistorySection";
 import { ChevronDown, Link2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -25,6 +29,12 @@ export function PublishDashboard() {
   const [publishStatus, setPublishStatus] = useState<"idle" | "publishing" | "success" | "error">("idle");
   const [publishProgress, setPublishProgress] = useState(0);
   const [changeDescription, setChangeDescription] = useState("");
+  const [includedPendingChangeIds, setIncludedPendingChangeIds] = useState<string[]>(
+    getDefaultIncludedPendingChangeIds,
+  );
+  const pendingChangeTotal = getPendingChangeCount();
+  const includedPendingCount = includedPendingChangeIds.length;
+  const publishSelectionBlocked = pendingChangeTotal > 0 && includedPendingCount === 0;
 
   const activeSections = [
     {
@@ -54,6 +64,7 @@ export function PublishDashboard() {
   };
 
   const handlePublish = () => {
+    const selectedCount = includedPendingChangeIds.length;
     setPublishStatus("publishing");
     setPublishProgress(0);
 
@@ -62,7 +73,11 @@ export function PublishDashboard() {
         if (prev >= 100) {
           clearInterval(interval);
           setPublishStatus("success");
-          toast.success("Changes published successfully");
+          toast.success(
+            selectedCount > 0
+              ? `Published successfully (${selectedCount} selected change${selectedCount === 1 ? "" : "s"})`
+              : "Changes published successfully",
+          );
           setTimeout(() => setPublishStatus("idle"), 3000);
           return 100;
         }
@@ -91,13 +106,32 @@ export function PublishDashboard() {
             </Button>
           </div>
           <div>
-            <span className="inline-block rounded px-2 py-1.5 text-sm font-bold leading-none text-white bg-[#737373]">
+            <span className="inline-block rounded-[4px] px-2 py-0.5 text-[14px] font-bold leading-[14px] text-white bg-[#737373]">
               Latest Publication: v0.3.6
             </span>
           </div>
           <p className="pt-1 text-base font-normal leading-6 text-white">
-            Last published <strong className="font-bold">1 month ago</strong>. There is{" "}
-            <strong className="font-bold">1</strong> pending change since last publish:
+            Last published <strong className="font-bold">1 month ago</strong>.{" "}
+            {pendingChangeTotal === 0 ? (
+              <>There are no pending changes since last publish.</>
+            ) : (
+              <>
+                There {pendingChangeTotal === 1 ? "is" : "are"}{" "}
+                <strong className="font-bold">{pendingChangeTotal}</strong> pending change
+                {pendingChangeTotal === 1 ? "" : "es"} since last publish
+                {includedPendingCount > 0 ? (
+                  <>
+                    ; <strong className="font-bold">{includedPendingCount}</strong>{" "}
+                    {includedPendingCount === 1 ? "is" : "are"} selected to include in the next publish.
+                  </>
+                ) : (
+                  <span className="text-[#fbbf24]">
+                    . Select at least one pending change in the table below (Include column), or none
+                    will ship with this publish.
+                  </span>
+                )}
+              </>
+            )}
           </p>
         </header>
 
@@ -116,7 +150,10 @@ export function PublishDashboard() {
           </div>
         )}
 
-        <PublishHistorySection />
+        <PublishHistorySection
+          includedPendingChangeIds={includedPendingChangeIds}
+          onIncludedPendingChangeIdsChange={setIncludedPendingChangeIds}
+        />
 
         <div className="ol-publish-divider flex flex-col gap-3 pt-7 pb-4">
           <Label htmlFor="description" className="sr-only">
@@ -146,7 +183,12 @@ export function PublishDashboard() {
             <Button
               type="button"
               onClick={handlePublish}
-              disabled={publishStatus === "publishing"}
+              disabled={publishStatus === "publishing" || publishSelectionBlocked}
+              title={
+                publishSelectionBlocked
+                  ? "Choose one or more pending changes in the history table to include in this publish."
+                  : undefined
+              }
               className="h-auto rounded-sm bg-[#3B76D3] px-3 py-2 text-base font-normal text-white hover:bg-[#3264b8] disabled:opacity-60"
             >
               Publish
@@ -193,7 +235,7 @@ export function PublishDashboard() {
                   <TableRow key={section.id} className="border-0">
                     <TableCell className="font-normal">{section.title}</TableCell>
                     <TableCell>
-                      <span className="inline-flex rounded px-2 py-1 text-sm font-bold leading-none text-white bg-[#275CAF]">
+                      <span className="inline-flex items-center rounded-[4px] px-2 py-0.5 text-[14px] font-bold leading-[14px] text-white bg-[#275CAF]">
                         {section.version}
                       </span>
                     </TableCell>

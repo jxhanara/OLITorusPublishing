@@ -1,18 +1,22 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
+import { Checkbox } from "./ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Search, Eye, ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
 import { DiffViewModal } from "./DiffViewModal";
 import { AuthorHoverCard } from "./AuthorHoverCard";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
 import { format } from "date-fns";
 
 interface Change {
   id: string;
   page: string;
   type: "Text" | "Image" | "Layout" | "Delete" | "New" | "Multiple";
+  /** Shown on hover when type is Multiple — lowercase labels, e.g. text, image, delete */
+  multipleBreakdown?: string[];
   description: string;
   author: {
     name: string;
@@ -55,9 +59,24 @@ const recentChanges: Change[] = [
     status: "pending",
   },
   {
+    id: "9",
+    page: "Course Settings",
+    type: "Text",
+    description: "Updated enrollment messaging for self-paced sections",
+    author: {
+      name: "Nam, Hanara",
+      initials: "HN",
+      email: "hnam@university.edu",
+      role: "Course Author",
+    },
+    timestamp: new Date(2026, 2, 23, 16, 5),
+    status: "pending",
+  },
+  {
     id: "3",
     page: "Quiz Section",
     type: "Multiple",
+    multipleBreakdown: ["text", "image", "delete"],
     description: "Added new answer choices and updated learning objectives across 2 quizzes",
     author: {
       name: "Emma Wilson",
@@ -310,6 +329,77 @@ function getStatusColor(status: Change["status"]) {
   }
 }
 
+function getBreakdownKindColor(kind: string) {
+  switch (kind.toLowerCase()) {
+    case "text":
+      return "bg-[#275CAF]";
+    case "image":
+      return "bg-[#6d28d9]";
+    case "layout":
+      return "bg-[#047857]";
+    case "delete":
+      return "bg-[#b91c1c]";
+    case "new":
+      return "bg-[#1d4ed8]";
+    case "multiple":
+      return "bg-[#a21caf]";
+    default:
+      return "bg-[#525252]";
+  }
+}
+
+/** Compact pill (~20px tall) — matches reference “changed” tag */
+const typeBadgeClass =
+  "inline-flex items-center rounded-[4px] px-2 py-0.5 text-[14px] font-bold capitalize leading-[14px] text-white";
+
+function ChangeTypeBadge({ change }: { change: Change }) {
+  const color = getTypeColor(change.type);
+  const breakdown = change.multipleBreakdown?.filter(Boolean) ?? [];
+
+  if (change.type === "Multiple" && breakdown.length > 0) {
+    const summary = breakdown.join(", ");
+    return (
+      <HoverCard openDelay={180} closeDelay={80}>
+        <HoverCardTrigger asChild>
+          <button
+            type="button"
+            aria-label={`Multiple change types: ${summary}`}
+            className={`${typeBadgeClass} ${color} cursor-help border-0 shadow-none outline-none ring-offset-0 transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[#275CAF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0D0C0F]`}
+          >
+            {change.type}
+          </button>
+        </HoverCardTrigger>
+        <HoverCardContent
+          side="top"
+          align="start"
+          sideOffset={8}
+          className="w-auto min-w-[220px] max-w-[280px] border border-[#525252] bg-[#1E1E1E] p-3 text-[#D4D4D4] shadow-xl outline-none"
+        >
+          <p className="mb-2.5 text-[11px] font-bold uppercase tracking-wide text-[#B8B4BF]">
+            Included in this change
+          </p>
+          <ul className="flex flex-wrap gap-1.5" aria-label="Change type breakdown">
+            {breakdown.map((kind) => (
+              <li key={kind}>
+                <span
+                  className={`inline-flex items-center rounded-[4px] px-2 py-0.5 text-[12px] font-bold capitalize leading-[12px] text-white ${getBreakdownKindColor(kind)}`}
+                >
+                  {kind}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 border-t border-[#404040] pt-2.5 text-xs leading-relaxed text-[#BAB8BF]">
+            This entry bundles more than one kind of modification. Open View Diff for the full comparison.
+          </p>
+        </HoverCardContent>
+      </HoverCard>
+    );
+  }
+
+  return <span className={`${typeBadgeClass} ${color}`}>{change.type}</span>;
+}
+
 function getDiffText(changeId: string) {
   switch (changeId) {
     case "1":
@@ -412,6 +502,16 @@ This course will teach you the fundamentals of gardening. Students will learn ab
 Throughout the semester, you will complete various assignments and quizzes. (updated grammar and spelling)`,
       };
 
+    case "9":
+      return {
+        current: `Course Settings — Enrollment
+
+Self-paced sections open automatically when the course starts.`,
+        new: `Course Settings — Enrollment
+
+Self-paced sections open automatically when the course starts, and learners receive a reminder email 7 days before access ends.`,
+      };
+
     default:
       return {
         current: `Welcome to the Course Introduction
@@ -440,13 +540,60 @@ Prerequisites: Basic computer skills`,
   }
 }
 
-export function PublishHistorySection() {
+export function getDefaultIncludedPendingChangeIds(): string[] {
+  return recentChanges.filter((c) => c.status === "pending").map((c) => c.id);
+}
+
+export function getPendingChangeCount(): number {
+  return recentChanges.filter((c) => c.status === "pending").length;
+}
+
+type PublishHistorySectionProps = {
+  /** Shown next to the author when a pending row matches this name (e.g. logged-in user). */
+  currentUserDisplayName?: string;
+  /** Pending change ids to include in the next publish (subset allowed). */
+  includedPendingChangeIds: string[];
+  onIncludedPendingChangeIdsChange: (ids: string[]) => void;
+};
+
+export function PublishHistorySection({
+  currentUserDisplayName = "Nam, Hanara",
+  includedPendingChangeIds,
+  onIncludedPendingChangeIdsChange,
+}: PublishHistorySectionProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterPage, setFilterPage] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [showDiffModal, setShowDiffModal] = useState(false);
   const [selectedDiff, setSelectedDiff] = useState<string | null>(null);
+
+  const pendingIds = useMemo(
+    () => recentChanges.filter((c) => c.status === "pending").map((c) => c.id),
+    [],
+  );
+
+  const includedSet = useMemo(() => new Set(includedPendingChangeIds), [includedPendingChangeIds]);
+  const allPendingSelected = pendingIds.length > 0 && pendingIds.every((id) => includedSet.has(id));
+  const somePendingSelected = pendingIds.some((id) => includedSet.has(id));
+
+  const setIncluded = (ids: string[]) => {
+    const allowed = new Set(pendingIds);
+    const next = ids.filter((id) => allowed.has(id));
+    onIncludedPendingChangeIdsChange(next);
+  };
+
+  const togglePendingRow = (changeId: string, checked: boolean) => {
+    const next = new Set(includedSet);
+    if (checked) next.add(changeId);
+    else next.delete(changeId);
+    setIncluded([...next]);
+  };
+
+  const toggleAllPending = () => {
+    if (allPendingSelected) setIncluded([]);
+    else setIncluded([...pendingIds]);
+  };
 
   const filteredChanges = recentChanges.filter((change) => {
     const matchesSearch =
@@ -473,7 +620,9 @@ export function PublishHistorySection() {
       <div className="space-y-4">
         <div>
           <h3 className="mb-1 text-base font-normal text-white">Pending &amp; Recent Changes</h3>
-          <p className="text-sm font-normal text-[#BAB8BF]">Review all modifications before publishing</p>
+          <p className="text-sm font-normal text-[#BAB8BF]">
+            Review modifications before publishing. For pending rows, use <strong className="font-semibold text-[#D4D4D4]">Include</strong> to choose which changes go out with the next publish (for example, only your own).
+          </p>
         </div>
 
         <div className="ol-publish-controls flex flex-wrap items-center gap-3">
@@ -539,6 +688,20 @@ export function PublishHistorySection() {
           <Table className="ol-publish-table">
             <TableHeader>
               <TableRow className="border-0 hover:bg-transparent">
+                <TableHead className="h-auto w-[52px] min-w-[52px] text-center">
+                  <span className="flex flex-col items-center gap-1.5">
+                    <Checkbox
+                      checked={
+                        allPendingSelected ? true : somePendingSelected ? "indeterminate" : false
+                      }
+                      onCheckedChange={() => toggleAllPending()}
+                      disabled={pendingIds.length === 0}
+                      aria-label="Select or clear all pending changes for publish"
+                      className="size-4 border-[#737373] bg-[#262626] data-[state=checked]:border-[#3B76D3] data-[state=checked]:bg-[#3B76D3] data-[state=indeterminate]:border-[#3B76D3] data-[state=indeterminate]:bg-[#3B76D3]"
+                    />
+                    <span className="text-xs font-semibold leading-tight text-[#D4D4D4]">Include</span>
+                  </span>
+                </TableHead>
                 <TableHead className="h-auto">
                   <SortableHeader>Page</SortableHeader>
                 </TableHead>
@@ -565,29 +728,46 @@ export function PublishHistorySection() {
             <TableBody>
               {filteredChanges.map((change) => (
                 <TableRow key={change.id} className="border-0">
+                  <TableCell className="text-center align-middle">
+                    {change.status === "pending" ? (
+                      <Checkbox
+                        checked={includedSet.has(change.id)}
+                        onCheckedChange={(v) => togglePendingRow(change.id, v === true)}
+                        aria-label={`Include pending change on ${change.page} in next publish`}
+                        className="mx-auto size-4 border-[#737373] bg-[#262626] data-[state=checked]:border-[#3B76D3] data-[state=checked]:bg-[#3B76D3]"
+                      />
+                    ) : (
+                      <span className="text-[#525252]" aria-hidden>
+                        —
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell className="font-normal">{change.page}</TableCell>
                   <TableCell>
-                    <span
-                      className={`inline-flex rounded px-2 py-1 text-sm font-bold capitalize leading-none text-white ${getTypeColor(change.type)}`}
-                    >
-                      {change.type}
-                    </span>
+                    <ChangeTypeBadge change={change} />
                   </TableCell>
                   <TableCell className="max-w-md whitespace-normal font-normal">{change.description}</TableCell>
                   <TableCell>
-                    <AuthorHoverCard
-                      name={change.author.name}
-                      initials={change.author.initials}
-                      avatar={change.author.avatar}
-                      email={change.author.email}
-                      role={change.author.role}
-                      triggerClassName="[&_span]:text-[#D4D4D4]"
-                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <AuthorHoverCard
+                        name={change.author.name}
+                        initials={change.author.initials}
+                        avatar={change.author.avatar}
+                        email={change.author.email}
+                        role={change.author.role}
+                        triggerClassName="[&_span]:text-[#D4D4D4]"
+                      />
+                      {change.status === "pending" && change.author.name === currentUserDisplayName ? (
+                        <span className="rounded-[4px] border border-[#525252] px-1.5 py-0.5 text-[11px] font-medium leading-none text-[#BAB8BF]">
+                          you
+                        </span>
+                      ) : null}
+                    </div>
                   </TableCell>
                   <TableCell className="font-normal text-[#D4D4D4]">{format(change.timestamp, "MMM d, h:mm a")}</TableCell>
                   <TableCell>
                     <span
-                      className={`inline-flex rounded px-2 py-1 text-sm font-bold capitalize leading-none text-white ${getStatusColor(change.status)}`}
+                      className={`${typeBadgeClass} ${getStatusColor(change.status)}`}
                     >
                       {change.status}
                     </span>
