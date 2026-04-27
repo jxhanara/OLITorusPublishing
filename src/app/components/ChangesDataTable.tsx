@@ -148,7 +148,7 @@ export function ChangesDataTable({ changes, onViewDiff }: ChangesDataTableProps)
                     onClick={() => onViewDiff?.(change.id)}
                   >
                     <Eye className="w-4 h-4 mr-1" />
-                    View Diff
+                    View changes
                   </Button>
                 </TableCell>
               </TableRow>

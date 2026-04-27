@@ -374,7 +374,7 @@ function ChangeTypeBadge({ change }: { change: Change }) {
             ))}
           </ul>
           <p className="mt-3 border-t border-[#404040] pt-2.5 text-xs leading-relaxed text-[#BAB8BF]">
-            This entry bundles more than one kind of modification. Open View Diff for the full comparison.
+            This entry bundles more than one kind of modification. Open View changes for the full comparison.
           </p>
         </HoverCardContent>
       </HoverCard>
@@ -764,7 +764,7 @@ export function PublishHistorySection({
                       className="gap-1 text-sm font-normal text-[#99CCFF] hover:bg-white/5 hover:text-[#b3d9ff]"
                     >
                       <Eye className="h-4 w-4" />
-                      View Diff
+                      View changes
                     </Button>
                   </TableCell>
                 </TableRow>
