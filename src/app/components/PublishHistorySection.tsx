@@ -10,6 +10,7 @@ import { DiffViewModal } from "./DiffViewModal";
 import { AuthorHoverCard } from "./AuthorHoverCard";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
 import { format } from "date-fns";
+import { cn } from "./ui/utils";
 
 interface Change {
   id: string;
@@ -299,61 +300,44 @@ function SortableHeader({ children }: { children: ReactNode }) {
   );
 }
 
-function getTypeColor(type: Change["type"]) {
+/**
+ * Calm type chips: shared neutral surface + thin left accent for scan (not full rainbow fills).
+ * — Default: slate accent (content edits: text, image, layout, new).
+ * — Delete: soft rose accent (only strong semantic signal).
+ * — Multiple: neutral-amber hint (composite; details on hover).
+ */
+function getTypeAccentClasses(type: Change["type"]) {
   switch (type) {
-    case "Text":
-      return "bg-[#275CAF]";
-    case "Image":
-      return "bg-[#6d28d9]";
-    case "Layout":
-      return "bg-[#047857]";
     case "Delete":
-      return "bg-[#b91c1c]";
-    case "New":
-      return "bg-[#1d4ed8]";
+      return "border-l-[3px] border-l-rose-500/75 bg-rose-950/25 text-rose-100/95";
     case "Multiple":
-      return "bg-[#a21caf]";
+      return "border-l-[3px] border-l-amber-500/50 bg-[#262626] text-[#e4e4e7]";
     default:
-      return "bg-[#525252]";
+      return "border-l-[3px] border-l-[#64748b]/85 bg-[#262626] text-[#e4e4e7]";
   }
 }
 
 function getStatusColor(status: Change["status"]) {
   switch (status) {
     case "pending":
-      return "bg-[#F1C40F]";
+      return "border border-[#404040] bg-[#F1C40F] text-white";
     case "published":
-      return "bg-[#275CAF]";
+      return "border border-[#404040] bg-[#275CAF] text-white";
     default:
-      return "bg-[#525252]";
+      return "border border-[#404040] bg-[#525252] text-white";
   }
 }
 
-function getBreakdownKindColor(kind: string) {
-  switch (kind.toLowerCase()) {
-    case "text":
-      return "bg-[#275CAF]";
-    case "image":
-      return "bg-[#6d28d9]";
-    case "layout":
-      return "bg-[#047857]";
-    case "delete":
-      return "bg-[#b91c1c]";
-    case "new":
-      return "bg-[#1d4ed8]";
-    case "multiple":
-      return "bg-[#a21caf]";
-    default:
-      return "bg-[#525252]";
-  }
-}
+/** Breakdown tags in hover: one quiet style so the popover stays readable */
+const breakdownTagClass =
+  "inline-flex items-center rounded border border-[#404040] bg-[#1f1f22] px-2 py-0.5 text-[11px] font-medium capitalize leading-tight text-[#d4d4d8]";
 
-/** Compact pill (~20px tall) — matches reference “changed” tag */
+/** Compact type pill — neutral chrome; left accent from getTypeAccentClasses */
 const typeBadgeClass =
-  "inline-flex items-center rounded-[4px] px-2 py-0.5 text-[14px] font-bold capitalize leading-[14px] text-white";
+  "inline-flex items-center rounded-md border border-[#3f3f46] py-0.5 pl-2 pr-2 text-[13px] font-medium capitalize leading-tight shadow-none transition-colors";
 
 function ChangeTypeBadge({ change }: { change: Change }) {
-  const color = getTypeColor(change.type);
+  const accent = getTypeAccentClasses(change.type);
   const breakdown = change.multipleBreakdown?.filter(Boolean) ?? [];
 
   if (change.type === "Multiple" && breakdown.length > 0) {
@@ -364,7 +348,11 @@ function ChangeTypeBadge({ change }: { change: Change }) {
           <button
             type="button"
             aria-label={`Multiple change types: ${summary}`}
-            className={`${typeBadgeClass} ${color} cursor-help border-0 shadow-none outline-none ring-offset-0 transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[#275CAF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0D0C0F]`}
+            className={cn(
+              typeBadgeClass,
+              accent,
+              "cursor-help outline-none ring-offset-0 hover:border-[#525252] hover:bg-[#2a2a2e] focus-visible:ring-2 focus-visible:ring-[#52525c] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0D0C0F]",
+            )}
           >
             {change.type}
           </button>
@@ -381,11 +369,7 @@ function ChangeTypeBadge({ change }: { change: Change }) {
           <ul className="flex flex-wrap gap-1.5" aria-label="Change type breakdown">
             {breakdown.map((kind) => (
               <li key={kind}>
-                <span
-                  className={`inline-flex items-center rounded-[4px] px-2 py-0.5 text-[12px] font-bold capitalize leading-[12px] text-white ${getBreakdownKindColor(kind)}`}
-                >
-                  {kind}
-                </span>
+                <span className={breakdownTagClass}>{kind}</span>
               </li>
             ))}
           </ul>
@@ -397,7 +381,7 @@ function ChangeTypeBadge({ change }: { change: Change }) {
     );
   }
 
-  return <span className={`${typeBadgeClass} ${color}`}>{change.type}</span>;
+  return <span className={cn(typeBadgeClass, accent)}>{change.type}</span>;
 }
 
 function getDiffText(changeId: string) {
