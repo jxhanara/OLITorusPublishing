@@ -3,6 +3,9 @@ import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
+// GitHub project Pages is served under /OLITorusPublishing/; Vercel and local dev use /
+const base =
+  process.env.GITHUB_PAGES_DEPLOY === 'true' ? '/OLITorusPublishing/' : '/'
 
 function figmaAssetResolver() {
   return {
@@ -24,7 +27,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
-  base: '/OLITorusPublishing/',
+  base,
   resolve: {
     alias: {
       // Alias @ to the src directory

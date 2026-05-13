@@ -8,29 +8,38 @@ const LayoutWrapper = ({ children }: { children: React.ReactNode }) => (
   <AppLayout>{children}</AppLayout>
 );
 
-export const router = createBrowserRouter([
-  {
-    path: "/",
-    element: (
-      <LayoutWrapper>
-        <PublishDashboard />
-      </LayoutWrapper>
-    ),
-  },
-  {
-    path: "/authoring",
-    element: (
-      <LayoutWrapper>
-        <AuthoringPage />
-      </LayoutWrapper>
-    ),
-  },
-  {
-    path: "/instructor",
-    element: (
-      <LayoutWrapper>
-        <InstructorDashboard />
-      </LayoutWrapper>
-    ),
-  },
-]);
+const viteBase = import.meta.env.BASE_URL;
+const routerBasename =
+  viteBase !== "/" && viteBase !== ""
+    ? viteBase.replace(/\/$/, "")
+    : undefined;
+
+export const router = createBrowserRouter(
+  [
+    {
+      path: "/",
+      element: (
+        <LayoutWrapper>
+          <PublishDashboard />
+        </LayoutWrapper>
+      ),
+    },
+    {
+      path: "/authoring",
+      element: (
+        <LayoutWrapper>
+          <AuthoringPage />
+        </LayoutWrapper>
+      ),
+    },
+    {
+      path: "/instructor",
+      element: (
+        <LayoutWrapper>
+          <InstructorDashboard />
+        </LayoutWrapper>
+      ),
+    },
+  ],
+  routerBasename ? { basename: routerBasename } : {},
+);
