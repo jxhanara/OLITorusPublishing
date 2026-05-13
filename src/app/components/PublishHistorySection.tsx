@@ -32,6 +32,21 @@ interface Change {
 
 const recentChanges: Change[] = [
   {
+    id: "3",
+    page: "Quiz Section",
+    type: "Multiple",
+    multipleBreakdown: ["text", "image", "delete"],
+    description: "Added new answer choices and updated learning objectives across 2 quizzes",
+    author: {
+      name: "Emma Wilson",
+      initials: "EW",
+      email: "ewilson@university.edu",
+      role: "Instructional Designer",
+    },
+    timestamp: new Date(2026, 2, 23, 18, 20),
+    status: "pending",
+  },
+  {
     id: "1",
     page: "Introduction",
     type: "Text",
@@ -72,21 +87,6 @@ const recentChanges: Change[] = [
     },
     timestamp: new Date(2026, 2, 23, 16, 5),
     status: "pending",
-  },
-  {
-    id: "3",
-    page: "Quiz Section",
-    type: "Multiple",
-    multipleBreakdown: ["text", "image", "delete"],
-    description: "Added new answer choices and updated learning objectives across 2 quizzes",
-    author: {
-      name: "Emma Wilson",
-      initials: "EW",
-      email: "ewilson@university.edu",
-      role: "Instructional Designer",
-    },
-    timestamp: new Date(2026, 2, 22, 16, 45),
-    status: "published",
   },
   {
     id: "4",
@@ -160,9 +160,210 @@ const recentChanges: Change[] = [
   },
 ];
 
+function getDiffText(changeId: string) {
+  switch (changeId) {
+    case "1":
+      return {
+        current: `Welcome to the Course Introduction
+
+This course covers the fundamentals of web development.
+
+You will learn:
+- HTML basics
+- CSS styling
+- Responsive design
+
+Prerequisites: None required`,
+        new: `Welcome to the Course Introduction
+
+This course covers the fundamentals of modern web development.
+
+You will learn:
+- HTML5 and semantic markup
+- CSS styling
+- Responsive design
+
+Prerequisites: Basic computer skills`,
+      };
+
+    case "2":
+      return {
+        current: `Module 1: Getting Started
+
+[Hero Image: legacy-brand-2024.jpg]
+Dimensions: 1200x600px
+Alt text: "Welcome to gardening basics"
+
+Introduction paragraph about getting started with your first garden.`,
+        new: `Module 1: Getting Started
+
+[Hero Image: updated-brand-2026.jpg] (added new image)
+Dimensions: 1920x1080px (updated dimensions)
+Alt text: "Modern gardening for sustainable living" (updated alt text)
+
+Introduction paragraph about getting started with your first garden.`,
+      };
+
+    case "4":
+      return {
+        current: `Resources Section
+
+Downloadable Materials:
+- Gardening_Guide_2025.pdf (removed - outdated)
+- Planting_Calendar_2026.pdf
+- Soil_Testing_Guide.pdf
+
+Additional reading materials and references.`,
+        new: `Resources Section
+
+Downloadable Materials:
+- Planting_Calendar_2026.pdf
+- Soil_Testing_Guide.pdf
+
+Additional reading materials and references.`,
+      };
+
+    case "6":
+      return {
+        current: `Module 2: Basics
+
+Section 1: Introduction
+Section 2: Tools and Equipment
+Section 3: Soil Preparation
+Section 4: Planting Techniques
+Section 5: Summary`,
+        new: `Module 2: Basics
+
+Part A: Getting Started
+  - Section 1: Introduction
+  - Section 2: Tools and Equipment (updated structure)
+
+Part B: Core Techniques (added new organization)
+  - Section 3: Soil Preparation
+  - Section 4: Planting Techniques
+
+Part C: Review (added new section)
+  - Summary and Key Takeaways`,
+      };
+
+    case "8":
+      return {
+        current: `Course Syllabus
+
+This cours will teach you the fundamental's of gardening. Student's will learn about soil, plants, and maintanence.
+
+Through out the semester, you will complete varios assignments and quizes.`,
+        new: `Course Syllabus
+
+This course will teach you the fundamentals of gardening. Students will learn about soil, plants, and maintenance. (updated grammar and spelling)
+
+Throughout the semester, you will complete various assignments and quizzes. (updated grammar and spelling)`,
+      };
+
+    case "9":
+      return {
+        current: `Course Settings — Enrollment
+
+Self-paced sections open automatically when the course starts.`,
+        new: `Course Settings — Enrollment
+
+Self-paced sections open automatically when the course starts, and learners receive a reminder email 7 days before access ends.`,
+      };
+
+    default:
+      return {
+        current: `Welcome to the Course Introduction
+
+This course covers the fundamentals of web development.
+
+You will learn:
+- HTML basics
+- CSS styling
+- JavaScript programming
+- Responsive design
+
+Prerequisites: None required`,
+        new: `Welcome to the Course Introduction
+
+This course covers the fundamentals of modern web development.
+
+You will learn:
+- HTML5 and semantic markup
+- CSS3 styling and animations (updated content)
+- JavaScript ES6+ programming (added modern features)
+- Responsive and mobile-first design
+
+Prerequisites: Basic computer skills`,
+      };
+  }
+}
+
 function getDiffChanges(changeId: string) {
-  if (changeId === "1" || changeId === "2" || changeId === "4" || changeId === "6" || changeId === "8") {
+  if (changeId === "4" || changeId === "6" || changeId === "8") {
     return undefined;
+  }
+
+  if (changeId === "1") {
+    const t = getDiffText("1");
+    return [
+      {
+        id: "intro-lecture",
+        title: "Introduction",
+        breadcrumb: ["UX Publication Course", "Introduction"],
+        learningObjectives: [
+          { text: "Summarize the course purpose and prerequisites for learners.", status: "unchanged" as const },
+          { text: "Identify core topics covered in the opening module.", status: "edited" as const },
+        ],
+        currentQuestions: [],
+        newQuestions: [],
+        previewVariant: "lecture-text" as const,
+        currentVersionText: t.current,
+        newVersionText: t.new,
+      },
+    ];
+  }
+
+  if (changeId === "2") {
+    return [
+      {
+        id: "module1-lecture",
+        title: "Module 1: Getting Started",
+        breadcrumb: ["UX Publication Course", "Module 1: Getting Started"],
+        learningObjectives: [
+          { text: "Orient learners to module goals and the course visual identity.", status: "unchanged" as const },
+          { text: "Explain how hero imagery supports motivation on landing pages.", status: "added" as const },
+        ],
+        currentQuestions: [],
+        newQuestions: [],
+        previewVariant: "lecture-image" as const,
+        heroImageBeforeSrc: null,
+        heroImageAfterSrc: "/assets/garden-hero-added.png",
+        currentVersionText: "",
+        newVersionText: "",
+      },
+    ];
+  }
+
+  if (changeId === "9") {
+    const t = getDiffText("9");
+    return [
+      {
+        id: "settings-lecture",
+        title: "Course Settings",
+        breadcrumb: ["UX Publication Course", "Course Settings"],
+        learningObjectives: [
+          {
+            text: "Configure enrollment timing and automated emails for self-paced sections.",
+            status: "edited" as const,
+          },
+        ],
+        currentQuestions: [],
+        newQuestions: [],
+        previewVariant: "lecture-text" as const,
+        currentVersionText: t.current,
+        newVersionText: t.new,
+      },
+    ];
   }
 
   if (changeId === "3") {
@@ -384,146 +585,6 @@ function ChangeTypeBadge({ change }: { change: Change }) {
   return <span className={cn(typeBadgeClass, accent)}>{change.type}</span>;
 }
 
-function getDiffText(changeId: string) {
-  switch (changeId) {
-    case "1":
-      return {
-        current: `Welcome to the Course Introduction
-
-This course covers the fundamentals of web development.
-
-You will learn:
-- HTML basics
-- CSS styling
-- JavaScript programming
-- Responsive design
-
-Prerequisites: None required`,
-        new: `Welcome to the Course Introduction
-
-This course covers the fundamentals of modern web development.
-
-You will learn:
-- HTML5 and semantic markup
-- CSS3 styling and animations (updated content)
-- JavaScript ES6+ programming (added modern features)
-- Responsive and mobile-first design
-
-Prerequisites: Basic computer skills`,
-      };
-
-    case "2":
-      return {
-        current: `Module 1: Getting Started
-
-[Hero Image: legacy-brand-2024.jpg]
-Dimensions: 1200x600px
-Alt text: "Welcome to gardening basics"
-
-Introduction paragraph about getting started with your first garden.`,
-        new: `Module 1: Getting Started
-
-[Hero Image: updated-brand-2026.jpg] (added new image)
-Dimensions: 1920x1080px (updated dimensions)
-Alt text: "Modern gardening for sustainable living" (updated alt text)
-
-Introduction paragraph about getting started with your first garden.`,
-      };
-
-    case "4":
-      return {
-        current: `Resources Section
-
-Downloadable Materials:
-- Gardening_Guide_2025.pdf (removed - outdated)
-- Planting_Calendar_2026.pdf
-- Soil_Testing_Guide.pdf
-
-Additional reading materials and references.`,
-        new: `Resources Section
-
-Downloadable Materials:
-- Planting_Calendar_2026.pdf
-- Soil_Testing_Guide.pdf
-
-Additional reading materials and references.`,
-      };
-
-    case "6":
-      return {
-        current: `Module 2: Basics
-
-Section 1: Introduction
-Section 2: Tools and Equipment
-Section 3: Soil Preparation
-Section 4: Planting Techniques
-Section 5: Summary`,
-        new: `Module 2: Basics
-
-Part A: Getting Started
-  - Section 1: Introduction
-  - Section 2: Tools and Equipment (updated structure)
-
-Part B: Core Techniques (added new organization)
-  - Section 3: Soil Preparation
-  - Section 4: Planting Techniques
-
-Part C: Review (added new section)
-  - Summary and Key Takeaways`,
-      };
-
-    case "8":
-      return {
-        current: `Course Syllabus
-
-This cours will teach you the fundamental's of gardening. Student's will learn about soil, plants, and maintanence.
-
-Through out the semester, you will complete varios assignments and quizes.`,
-        new: `Course Syllabus
-
-This course will teach you the fundamentals of gardening. Students will learn about soil, plants, and maintenance. (updated grammar and spelling)
-
-Throughout the semester, you will complete various assignments and quizzes. (updated grammar and spelling)`,
-      };
-
-    case "9":
-      return {
-        current: `Course Settings — Enrollment
-
-Self-paced sections open automatically when the course starts.`,
-        new: `Course Settings — Enrollment
-
-Self-paced sections open automatically when the course starts, and learners receive a reminder email 7 days before access ends.`,
-      };
-
-    default:
-      return {
-        current: `Welcome to the Course Introduction
-
-This course covers the fundamentals of web development.
-
-You will learn:
-- HTML basics
-- CSS styling
-- JavaScript programming
-- Responsive design
-
-Prerequisites: None required`,
-        new: `Welcome to the Course Introduction
-
-This course covers the fundamentals of modern web development.
-
-You will learn:
-- HTML5 and semantic markup
-- CSS3 styling and animations (updated content)
-- JavaScript ES6+ programming (added modern features)
-- Responsive and mobile-first design
-
-Prerequisites: Basic computer skills`,
-      };
-  }
-}
-
 export function getDefaultIncludedPendingChangeIds(): string[] {
   return recentChanges.filter((c) => c.status === "pending").map((c) => c.id);
 }
@@ -548,7 +609,7 @@ export function PublishHistorySection({
   const [searchQuery, setSearchQuery] = useState("");
   const [filterPage, setFilterPage] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("pending");
   const [showDiffModal, setShowDiffModal] = useState(false);
   const [selectedDiff, setSelectedDiff] = useState<string | null>(null);
 

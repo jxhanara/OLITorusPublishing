@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -11,7 +12,7 @@ import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { ChevronRight, ChevronLeft, X, GripVertical, Copy, Trash2, Pencil, Users, MoreHorizontal } from "lucide-react";
 import { cn } from "./ui/utils";
-import { DiffCurriculumStaticContent } from "./DiffCurriculumStaticContent";
+import { DiffCurriculumFullPageLayout, DiffCurriculumStaticContent } from "./DiffCurriculumStaticContent";
 
 interface QuizQuestion {
   question: string;
@@ -34,6 +35,11 @@ export interface PageChange {
   /** When set (and no quiz content), text diff uses these per page instead of modal-level strings */
   currentVersionText?: string;
   newVersionText?: string;
+  /** Full-page curriculum preview without quiz blocks (text or hero image diff) */
+  previewVariant?: "quiz" | "lecture-text" | "lecture-image";
+  /** Lecture image diff: "after" is the new hero (e.g. added image) */
+  heroImageBeforeSrc?: string | null;
+  heroImageAfterSrc?: string | null;
 }
 
 type ChangeKind = "added" | "edited" | "removed";
@@ -415,6 +421,16 @@ function buildChangeList(page: PageChange): ChangeListEntry[] {
     });
   }
 
+  if (page.previewVariant === "lecture-image" && page.heroImageAfterSrc) {
+    entries.push({
+      id: "hero-image",
+      kind: "added",
+      label: "Hero image",
+      meta: page.breadcrumb[page.breadcrumb.length - 1] ?? page.title,
+      scrollTargetId: "diff-hero-image",
+    });
+  }
+
   return entries;
 }
 
@@ -436,6 +452,9 @@ function pageStats(page: PageChange) {
     if (k === "added") added++;
     else if (k === "edited") edited++;
     else if (k === "removed") removed++;
+  }
+  if (page.previewVariant === "lecture-image" && page.heroImageAfterSrc) {
+    added++;
   }
   return { added, edited, removed };
 }
@@ -514,6 +533,7 @@ export function DiffViewModal({
   const [filter, setFilter] = useState<FilterKind>("all");
   const [activeChangeId, setActiveChangeId] = useState<string | null>(null);
   const [detailQuestionIndex, setDetailQuestionIndex] = useState<number | null>(null);
+  const [detailLectureTextOpen, setDetailLectureTextOpen] = useState(false);
 
   const centerScrollRef = useRef<HTMLDivElement>(null);
 
@@ -524,6 +544,7 @@ export function DiffViewModal({
       setFilter("all");
       setActiveChangeId(null);
       setDetailQuestionIndex(null);
+      setDetailLectureTextOpen(false);
     }
   }, [open]);
 
@@ -536,6 +557,11 @@ export function DiffViewModal({
   const isFirstPage = currentPageIndex <= 0;
   const isLastPage = currentPageIndex >= totalPages - 1;
 
+  const isLecturePreview =
+    selectedPage.previewVariant === "lecture-text" || selectedPage.previewVariant === "lecture-image";
+  const hasQuizBlocks =
+    selectedPage.currentQuestions.length > 0 || selectedPage.newQuestions.length > 0;
+
   const currentText = selectedPage.currentVersionText ?? currentVersion;
   const newText = selectedPage.newVersionText ?? newVersion;
 
@@ -546,31 +572,54 @@ export function DiffViewModal({
 
   const lineRows = useMemo(() => simpleLineDiff(currentText, newText), [currentText, newText]);
   const textKind = useMemo(() => textDiffChangeKind(lineRows), [lineRows]);
-  const hasTextDiff = !hasQuizContent && (currentText.trim().length > 0 || newText.trim().length > 0);
+  const legacyTextOnlyDiff = !hasQuizContent && (currentText.trim().length > 0 || newText.trim().length > 0);
+  const hasTextDiff = legacyTextOnlyDiff;
 
   const changeList = useMemo(() => {
-    if (hasQuizContent) return buildChangeList(selectedPage);
-    if (!hasTextDiff || !textKind) return [];
-    return [
-      {
-        id: "text-body",
-        kind: textKind,
-        label: "Page text",
-        meta: selectedPage.title,
-        scrollTargetId: "diff-text-block",
-      },
-    ];
-  }, [hasQuizContent, hasTextDiff, selectedPage, textKind]);
+    if (!hasQuizContent) {
+      if (!textKind) return [];
+      return [
+        {
+          id: "text-body",
+          kind: textKind,
+          label: "Page text",
+          meta: selectedPage.title,
+          scrollTargetId: "diff-text-block",
+        },
+      ];
+    }
+    const list = buildChangeList(selectedPage);
+    if (selectedPage.previewVariant === "lecture-text" && textKind && !list.some((e) => e.id === "text-body")) {
+      return [
+        ...list,
+        {
+          id: "text-body",
+          kind: textKind,
+          label: "Page text",
+          meta: selectedPage.title,
+          scrollTargetId: "diff-text-block",
+        },
+      ];
+    }
+    return list;
+  }, [hasQuizContent, selectedPage, textKind]);
 
   const stats = useMemo(() => {
+    if (!hasQuizContent) {
+      if (!textKind) return { added: 0, edited: 0, removed: 0 };
+      return {
+        added: textKind === "added" ? 1 : 0,
+        edited: textKind === "edited" ? 1 : 0,
+        removed: textKind === "removed" ? 1 : 0,
+      };
+    }
     const s = pageStats(selectedPage);
-    if (hasQuizContent) return s;
-    if (!textKind) return { added: 0, edited: 0, removed: 0 };
-    return {
-      added: textKind === "added" ? 1 : 0,
-      edited: textKind === "edited" ? 1 : 0,
-      removed: textKind === "removed" ? 1 : 0,
-    };
+    if (selectedPage.previewVariant === "lecture-text" && textKind) {
+      if (textKind === "added") return { ...s, added: s.added + 1 };
+      if (textKind === "edited") return { ...s, edited: s.edited + 1 };
+      if (textKind === "removed") return { ...s, removed: s.removed + 1 };
+    }
+    return s;
   }, [hasQuizContent, selectedPage, textKind]);
 
   const filteredChangeList = useMemo(() => {
@@ -637,82 +686,223 @@ export function DiffViewModal({
       kind === "removed" && "bg-[#6b2f2f] text-[#0a0404] ring-1 ring-[#a34a4a]/45",
     );
 
-  const sectionBorder = (kind: ChangeKind | "none", highlighted: boolean) =>
-    cn(
-      "overflow-hidden rounded-lg border border-[#404040] transition-shadow",
-      kind === "none" && "border-[#404040]",
-      highlighted && kind === "added" && cn("border-[#639922]/45", "shadow-[0_0_0_1px_rgba(99,153,34,0.25)]"),
-      highlighted && kind === "edited" && cn("border-[#ef9f27]/45", "shadow-[0_0_0_1px_rgba(239,159,39,0.2)]"),
-      highlighted && kind === "removed" && cn("border-[#e24b4a]/35"),
-    );
+  /** Flowing page body: edits read as part of the lesson, not a detached editor. */
+  const renderCurriculumInlineTextIntro = (mode: ViewMode) => {
+    if (!textKind) return null;
+    const prose = "text-base font-normal leading-8 text-[#F5F5F5]";
 
-  const renderTextRows = (mode: ViewMode) => (
-    <div id="diff-text-block" className={sectionBorder(textKind ?? "none", Boolean(textKind))}>
-      {textKind ? (
-        <div
-          className={cn(
-            "flex items-center justify-between border-b border-[#404040] px-3 py-2 text-[11px] font-medium",
-            textKind === "added" && "bg-[#639922]/12 text-[#97c459]",
-            textKind === "edited" && "bg-[#ef9f27]/10 text-[#ef9f27]",
-            textKind === "removed" && "bg-[#e24b4a]/12 text-[#f09595]",
-          )}
-        >
-          <span>
-            {textKind === "added" && "Added — page text"}
-            {textKind === "edited" && "Edited — page text"}
-            {textKind === "removed" && "Removed — page text"}
-          </span>
+    return (
+      <div id="diff-text-block" className="mt-3 space-y-4">
+        <div className="flex flex-wrap items-center justify-end gap-3 border-b border-white/[0.06] pb-2">
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-white/40">Page body</span>
+          <button
+            type="button"
+            onClick={() => {
+              setDetailQuestionIndex(null);
+              setDetailLectureTextOpen(true);
+            }}
+            className="text-[13px] font-medium text-[#99CCFF] underline-offset-2 hover:underline"
+          >
+            View full text comparison
+          </button>
         </div>
-      ) : null}
-      <div className={cn("space-y-0.5 p-4 font-[family-name:var(--font-family-open)]", torus.inner)}>
         {lineRows.map((row, idx) => {
           if (mode === "diff" && row.kind === "same") return null;
           if (row.kind === "same") {
+            const t = (row.neu ?? "").trim();
+            if (!t) return <div key={idx} className="h-1" aria-hidden />;
+            const isBullet = t.startsWith("-");
             return (
-              <p key={idx} className={cn("pl-2 text-[13px] leading-relaxed", torus.prose)}>
-                <span className="mr-2 select-none font-mono text-[11px] text-white/25">{idx + 1}</span>
-                {row.neu || " "}
+              <p key={idx} className={cn(prose, isBullet && "pl-1")}>
+                {isBullet ? <span className="mr-2 text-[#737373]" aria-hidden>•</span> : null}
+                {isBullet ? t.replace(/^-\s*/, "") : row.neu}
               </p>
             );
           }
           if (row.kind === "del") {
             return (
-              <p
-                key={idx}
-                className={cn("rounded px-2 py-1 text-[13px] leading-relaxed line-through", torus.removedBg, torus.removed)}
-              >
-                <span className="mr-2 select-none font-mono text-[11px] text-white/25">{idx + 1}</span>
-                {row.old || " "}
-              </p>
+              <div key={idx} className="relative rounded pt-2 ring-1 ring-[#c45a5a]/75">
+                <span className="absolute -right-0.5 -top-2 z-10 rounded bg-[#6b2f2f] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#f5d0d0] shadow-sm ring-1 ring-[#a34a4a]/50">
+                  Removed
+                </span>
+                <div className="rounded border border-[#a34a4a]/65 bg-[#261414]/35 px-3 py-2.5">
+                  <p className={cn("text-base leading-8 line-through", torus.removed)}>{row.old || " "}</p>
+                </div>
+              </div>
             );
           }
           if (row.kind === "add") {
             return (
-              <p key={idx} className={cn("rounded px-2 py-1 text-[13px] leading-relaxed", "bg-[#639922]/15", torus.added)}>
-                <span className="mr-2 select-none font-mono text-[11px] text-white/25">{idx + 1}</span>
-                {row.neu || " "}
-              </p>
+              <div key={idx} className="relative rounded pt-2 ring-1 ring-[#4a7c2f]">
+                <span className="absolute -right-0.5 -top-2 z-10 rounded bg-[#3d6b28] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#e8ffc8] shadow-sm ring-1 ring-[#5a9440]/55">
+                  New
+                </span>
+                <div className="rounded border border-[#5a9440]/70 bg-[#1f3d18]/40 px-3 py-2.5">
+                  <p className={cn("text-base leading-8", torus.added)}>{row.neu || " "}</p>
+                </div>
+              </div>
             );
           }
           return (
-            <div key={idx} className="space-y-1 rounded border border-white/[0.06] bg-black/20 px-2 py-2">
-              <p className={cn("text-[13px] leading-relaxed line-through", torus.removed)}>
-                <span className="mr-2 select-none font-mono text-[11px] text-white/25">{idx + 1}</span>
-                {row.old || " "}
-              </p>
-              <p className={cn("text-[13px] leading-relaxed", torus.added)}>
-                <span className="mr-2 select-none font-mono text-[11px] text-white/25">{idx + 1}</span>
-                {row.neu || " "}
-              </p>
+            <div key={idx} className="relative rounded pt-2 ring-1 ring-[#c78a2a]/75">
+              <span className="absolute -right-0.5 -top-2 z-10 rounded bg-[#8a6218] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#0c0902] shadow-sm ring-1 ring-[#c78a2a]/45">
+                Edited
+              </span>
+              <div className="rounded border border-[#c78a2a]/55 bg-[#2a2418]/55 px-3 py-2.5">
+                <p className="text-base leading-8 text-[#F5F5F5]">
+                  <span className="text-[#f09595] line-through decoration-[#f09595]/90">{row.old || " "}</span>
+                  <span className="mx-1.5 text-white/25" aria-hidden>
+                    →
+                  </span>
+                  <span className={cn(torus.added)}>{row.neu || " "}</span>
+                </p>
+              </div>
             </div>
           );
         })}
       </div>
+    );
+  };
+
+  const defaultCurriculumIntro = (
+    <p className="mt-3 text-base font-normal leading-8 text-[#F5F5F5]">
+      Just like humans need a balanced diet to stay healthy, plants need a variety of nutrients to grow, reproduce, and
+      resist disease. These nutrients are mostly absorbed from the soil through the plant&apos;s roots and play specific roles
+      in development. When a plant lacks one or more key nutrients, it often shows visible symptoms such as yellow leaves,
+      stunted growth, or poor flowering.
+    </p>
+  );
+
+  const renderLecturePageTextPanel = (mode: ViewMode) => {
+    if (!textKind) return null;
+    const outlineClass =
+      textKind === "added"
+        ? "rounded-lg p-1 outline outline-2 outline-offset-[-1px] outline-[#4a7c2f] sm:p-1.5"
+        : textKind === "removed"
+          ? "rounded-lg p-1 outline outline-2 outline-offset-[-1px] outline-[#e24b4a]/55 sm:p-1.5"
+          : "rounded-lg p-1 outline outline-2 outline-offset-[-1px] outline-[#ef9f27]/55 sm:p-1.5";
+    const barLabel =
+      textKind === "added" ? "Added — page text" : textKind === "removed" ? "Removed — page text" : "Edited — page text";
+
+    return (
+      <div id="diff-text-block" className={cn("space-y-2", outlineClass)}>
+        <div
+          className={cn(
+            "flex flex-wrap items-center justify-between gap-2 rounded-md px-3 py-2 text-[11px] font-semibold",
+            textKind === "added" && "bg-[#1a2614] text-[#c8f0a4]",
+            textKind === "edited" && "bg-[#2a2418] text-[#f5d08a]",
+            textKind === "removed" && "bg-[#261414] text-[#f5c0c0]",
+          )}
+        >
+          <span className="min-w-0 flex-1 truncate">{barLabel}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setDetailQuestionIndex(null);
+              setDetailLectureTextOpen(true);
+            }}
+            className="shrink-0 rounded border border-[#6aad4a]/60 bg-[#253920] px-2.5 py-1 text-[11px] font-medium text-[#d4f5bc] hover:bg-[#2f4a28]"
+          >
+            View detail
+          </button>
+        </div>
+
+        <div className="overflow-hidden rounded-lg border border-[#404040] bg-[#2A2B2E] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
+          <div className="space-y-5 px-5 pb-8 pt-6 sm:px-8">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-transparent pb-1">
+              <div className="flex flex-wrap items-end gap-2">
+                <h3 className="text-2xl font-normal leading-9 text-white">Page text</h3>
+                <span className="cursor-default rounded-sm px-2 py-1 text-[14px] text-[#3B76D3]">Edit Title</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button type="button" className="rounded-sm p-3 text-[#3B76D3] hover:bg-white/5" aria-label="Duplicate">
+                  <Copy className="size-4" strokeWidth={2} />
+                </button>
+                <button type="button" className="rounded-sm p-2 text-white hover:bg-white/5" aria-label="Delete">
+                  <Trash2 className="size-4" strokeWidth={1.75} />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-end border-b border-[#525252]">
+              <div className="border-b-2 border-[#4CA6FF] px-3 pb-2.5 pt-2 text-center text-[14px] font-medium uppercase leading-[17.5px] text-[#F5F5F5]">
+                Content
+              </div>
+              {["Settings", "History"].map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  className="px-3 pb-2.5 pt-2 text-center text-[14px] font-medium uppercase leading-[17.5px] text-[#3B76D3] hover:text-[#4CA6FF]"
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+
+            <div className="rounded border border-[#D4D4D4] bg-[#2A2B2E] p-4">
+              <div className="space-y-4 font-[family-name:var(--font-family-open)]">
+                {lineRows.map((row, idx) => {
+                  if (mode === "diff" && row.kind === "same") return null;
+                  if (row.kind === "same") {
+                    const t = (row.neu ?? "").trim();
+                    if (!t) return <div key={idx} className="h-2" />;
+                    return (
+                      <p key={idx} className="text-[16px] font-normal leading-8 text-[#F5F5F5]">
+                        {row.neu}
+                      </p>
+                    );
+                  }
+                  if (row.kind === "del") {
+                    return (
+                      <div key={idx} className="relative rounded pt-2 ring-1 ring-[#c45a5a]/75">
+                        <span className="absolute -right-0.5 -top-2 z-10 rounded bg-[#6b2f2f] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#f5d0d0] shadow-sm ring-1 ring-[#a34a4a]/50">
+                          Removed
+                        </span>
+                        <div className="rounded border border-[#a34a4a]/65 bg-[#261414]/35 px-3 py-2.5">
+                          <p className={cn("text-[16px] font-normal leading-8 line-through", torus.removed)}>{row.old || " "}</p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  if (row.kind === "add") {
+                    return (
+                      <div key={idx} className="relative rounded pt-2 ring-1 ring-[#4a7c2f]">
+                        <span className="absolute -right-0.5 -top-2 z-10 rounded bg-[#3d6b28] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#e8ffc8] shadow-sm ring-1 ring-[#5a9440]/55">
+                          New
+                        </span>
+                        <div className="rounded border border-[#5a9440]/70 bg-[#1f3d18]/40 px-3 py-2.5">
+                          <p className={cn("text-[16px] font-normal leading-8", torus.added)}>{row.neu || " "}</p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={idx} className="relative rounded pt-2 ring-1 ring-[#c78a2a]/75">
+                      <span className="absolute -right-0.5 -top-2 z-10 rounded bg-[#8a6218] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#0c0902] shadow-sm ring-1 ring-[#c78a2a]/45">
+                        Edited
+                      </span>
+                      <div className="rounded border border-[#c78a2a]/55 bg-[#2a2418]/55 px-3 py-2.5">
+                        <p className="text-[16px] font-normal leading-8 text-[#F5F5F5]">
+                          <span className={cn("line-through", torus.removed)}>{row.old || " "}</span>
+                          <span className="mx-1.5 text-white/25" aria-hidden>
+                            →
+                          </span>
+                          <span className={cn(torus.added)}>{row.neu || " "}</span>
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
+  };
 
   const renderDetailOverlay = () => {
-    if (detailQuestionIndex === null || !hasQuizContent) return null;
+    if (detailQuestionIndex === null || !hasQuizBlocks) return null;
     const cur = selectedPage.currentQuestions[detailQuestionIndex];
     const neu = selectedPage.newQuestions[detailQuestionIndex];
     if (!cur || !neu) return null;
@@ -726,7 +916,10 @@ export function DiffViewModal({
             variant="ghost"
             size="sm"
             className="text-[#BAB8BF] hover:bg-white/10 hover:text-white"
-            onClick={() => setDetailQuestionIndex(null)}
+            onClick={() => {
+              setDetailQuestionIndex(null);
+              setDetailLectureTextOpen(false);
+            }}
           >
             <X className="size-4" />
             Close detail
@@ -791,19 +984,68 @@ export function DiffViewModal({
     );
   };
 
+  const renderLectureTextDetailOverlay = () => {
+    if (!detailLectureTextOpen || !textKind) return null;
+    if (!currentText.trim() && !newText.trim()) return null;
+
+    return (
+      <div
+        className={cn("absolute inset-0 z-[60] flex flex-col", torus.shell)}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Page text side-by-side comparison"
+      >
+        <div className={cn("flex items-center justify-between border-b border-[#404040] bg-[#262626] px-4 py-3")}>
+          <span className="text-sm font-medium text-[#EEEBF5]">Side-by-side: page text</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-[#BAB8BF] hover:bg-white/10 hover:text-white"
+            onClick={() => setDetailLectureTextOpen(false)}
+          >
+            <X className="size-4" />
+            Close detail
+          </Button>
+        </div>
+        <div className="grid min-h-0 flex-1 grid-cols-2 gap-0 border-b border-[#404040]">
+          <div className="flex min-h-0 flex-col border-r border-[#404040]">
+            <div className={cn("border-b border-[#525252] px-3 py-2 text-[11px] font-medium", torus.removedBg, torus.removed)}>
+              Current
+            </div>
+            <ScrollArea className="min-h-0 flex-1 bg-[#2A2B2E]">
+              <pre className="whitespace-pre-wrap break-words p-4 font-[family-name:var(--font-family-open)] text-[14px] leading-relaxed text-[#D4D4D4]">
+                {currentText}
+              </pre>
+            </ScrollArea>
+          </div>
+          <div className="flex min-h-0 flex-col">
+            <div className="border-b border-[#525252] bg-[#1f3d18] px-3 py-2 text-[11px] font-medium text-[#c8f5a8]">New</div>
+            <ScrollArea className="min-h-0 flex-1 bg-[#2A2B2E]">
+              <pre className="whitespace-pre-wrap break-words p-4 font-[family-name:var(--font-family-open)] text-[14px] leading-relaxed text-[#D4D4D4]">
+                {newText}
+              </pre>
+            </ScrollArea>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        hideClose
         className={cn(
+          /* Do not use `relative` here — it overrides Radix's `fixed` via tailwind-merge and portals the panel below the viewport (only the dimmed overlay is visible). */
           "flex h-[92vh] !max-w-[min(96vw,1680px)] w-[96vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-none",
           torus.shell,
           "border-white/[0.08] text-white shadow-2xl",
-          "[&>button[data-slot]]:top-3 [&>button[data-slot]]:right-3 [&>button[data-slot]]:text-white/70 [&>button[data-slot]]:hover:bg-white/10 [&>button[data-slot]]:hover:text-white",
         )}
       >
         <DialogHeader className="sr-only">
           <DialogTitle>Review changes</DialogTitle>
-          <DialogDescription>Compare updates in full-page context or diff-only mode.</DialogDescription>
+          <DialogDescription>Compare updates in full-page context or view changes only.</DialogDescription>
         </DialogHeader>
 
         <div className="relative flex min-h-0 flex-1 flex-col lg:flex-row">
@@ -869,13 +1111,13 @@ export function DiffViewModal({
 
           {/* Center */}
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#404040] bg-[#262626] px-4 py-2.5">
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-0 text-[14px] leading-6">
+            <header className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 border-b border-[#404040] bg-[#262626] px-4 py-2.5">
+              <div className="flex min-w-0 flex-wrap items-center gap-0 text-[14px] leading-6">
                 {breadcrumbTrail.map((crumb, idx) => (
                   <span key={idx} className="flex min-w-0 items-center">
                     {idx > 0 && (
-                      <span className="px-3 text-[#BAB8BF]" aria-hidden>
-                        <ChevronRight className="size-3 shrink-0 -rotate-90 opacity-80" />
+                      <span className="px-2 text-[#BAB8BF]" aria-hidden>
+                        <ChevronRight className="size-3 shrink-0 opacity-80" />
                       </span>
                     )}
                     <span
@@ -888,12 +1130,14 @@ export function DiffViewModal({
                     </span>
                   </span>
                 ))}
+              </div>
+              <div className="flex shrink-0 justify-center px-2">
                 {totalPages > 1 ? (
-                  <span className="ml-2 hidden items-center gap-1 sm:inline-flex">
+                  <span className="inline-flex items-center gap-1">
                     <button type="button" className={navButtonClass} onClick={goToPreviousPage} disabled={isFirstPage} aria-label="Previous page">
                       <ChevronLeft className="size-4" />
                     </button>
-                    <span className="tabular-nums text-white/50">
+                    <span className="min-w-[2.5rem] text-center text-[13px] tabular-nums text-white/60">
                       {currentPageIndex + 1}/{totalPages}
                     </span>
                     <button type="button" className={navButtonClass} onClick={goToNextPage} disabled={isLastPage} aria-label="Next page">
@@ -901,28 +1145,30 @@ export function DiffViewModal({
                     </button>
                   </span>
                 ) : null}
-            </div>
-              <div className="inline-flex rounded-md bg-white/[0.06] p-0.5" role="group" aria-label="View mode">
-                <button
-                  type="button"
-                  onClick={() => setViewMode("full")}
-                  className={cn(
-                    "rounded px-2.5 py-1 text-[11px] font-medium transition-colors",
-                    viewMode === "full" ? "bg-white/10 text-white/90" : "text-white/45 hover:text-white/70",
-                  )}
-                >
-                  Full page
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode("diff")}
-                  className={cn(
-                    "rounded px-2.5 py-1 text-[11px] font-medium transition-colors",
-                    viewMode === "diff" ? "bg-white/10 text-white/90" : "text-white/45 hover:text-white/70",
-                  )}
-                >
-                  Diff only
-                </button>
+              </div>
+              <div className="flex justify-end">
+                <div className="inline-flex rounded-md bg-white/[0.06] p-0.5" role="group" aria-label="View mode: full page or changes only">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("full")}
+                    className={cn(
+                      "rounded px-2.5 py-1 text-[11px] font-medium transition-colors",
+                      viewMode === "full" ? "bg-white/10 text-white/90" : "text-white/45 hover:text-white/70",
+                    )}
+                  >
+                    Full page
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("diff")}
+                    className={cn(
+                      "rounded px-2 py-1 text-[10px] font-medium leading-tight transition-colors sm:text-[11px]",
+                      viewMode === "diff" ? "bg-white/10 text-white/90" : "text-white/45 hover:text-white/70",
+                    )}
+                  >
+                    View changes only
+                  </button>
+                </div>
               </div>
             </header>
 
@@ -984,6 +1230,14 @@ export function DiffViewModal({
                                     <span className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-[#b7dc7a]">
                                       Added
                                     </span>
+                                  ) : k === "edited" ? (
+                                    <span className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-[#f0c080]">
+                                      Edited
+                                    </span>
+                                  ) : k === "removed" ? (
+                                    <span className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-[#f09595]">
+                                      Removed
+                                    </span>
                                   ) : null}
                                 </div>
                               );
@@ -993,7 +1247,78 @@ export function DiffViewModal({
                       </div>
                     ) : null}
 
-                    {viewMode === "full" ? (
+                    {isLecturePreview ? (
+                      viewMode === "full" ? (
+                        <div className="mb-6 rounded-lg border border-[#404040] bg-[#2A2B2E] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
+                          {selectedPage.previewVariant === "lecture-text" && textKind ? (
+                            <DiffCurriculumFullPageLayout
+                              pageTitle={breadcrumbTitle}
+                              introductionSlot={renderCurriculumInlineTextIntro("full")}
+                            />
+                          ) : selectedPage.previewVariant === "lecture-image" && selectedPage.heroImageAfterSrc ? (
+                            <DiffCurriculumFullPageLayout
+                              pageTitle={breadcrumbTitle}
+                              introductionSlot={defaultCurriculumIntro}
+                              mediaSlot={
+                                <div className="w-full max-w-[800px] space-y-2">
+                                  <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-[#A3A3A3]">
+                                    Hero image
+                                  </p>
+                                  <div className="grid gap-3 md:grid-cols-2">
+                                    <div className="rounded-lg border border-[#525252] bg-[#1a1a1a]/80 p-3">
+                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-[#A3A3A3]">Previous</p>
+                                      <p className="mt-1 text-xs text-[#BAB8BF]">No hero (placeholder)</p>
+                                      <div className="mt-3 h-48 rounded-md bg-[#0f0f0f] ring-1 ring-[#404040]" aria-hidden />
+                                    </div>
+                                    <div
+                                      id="diff-hero-image"
+                                      className="relative rounded-lg border-2 border-[#4a7c2f] bg-[#1f2918] p-2 shadow-[0_0_0_1px_rgba(74,124,47,0.35)]"
+                                    >
+                                      <span className="absolute right-2 top-2 z-10 rounded bg-[#3d6b28] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[#e8ffc8]">
+                                        New
+                                      </span>
+                                      <div className="mb-1.5 rounded bg-[#1a2614]/90 px-2 py-1 text-[10px] font-semibold text-[#c8f0a4]">
+                                        Added — Hero image
+                                      </div>
+                                      <img
+                                        src={selectedPage.heroImageAfterSrc}
+                                        alt="New course hero: garden in full bloom"
+                                        className="max-h-[min(280px,40vh)] w-full rounded-md object-cover"
+                                      />
+                                    </div>
+                                  </div>
+                                  <p className="text-center text-base text-[#F5F5F5]/40">Caption (optional)</p>
+                                </div>
+                              }
+                            />
+                          ) : (
+                            <DiffCurriculumStaticContent pageTitle={breadcrumbTitle} />
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          {selectedPage.previewVariant === "lecture-text" && textKind && (filter === "all" || filter === textKind) ? (
+                            renderLecturePageTextPanel("diff")
+                          ) : selectedPage.previewVariant === "lecture-image" && selectedPage.heroImageAfterSrc && (filter === "all" || filter === "added") ? (
+                            <div
+                              id="diff-hero-image"
+                              className="rounded-lg border-2 border-[#4a7c2f] bg-[#2A2B2E] p-3 shadow-[0_0_0_1px_rgba(74,124,47,0.35)]"
+                            >
+                              <div className="mb-2 rounded-md bg-[#1a2614] px-3 py-2 text-[11px] font-semibold text-[#c8f0a4]">
+                                Added — Hero image
+                              </div>
+                              <img
+                                src={selectedPage.heroImageAfterSrc}
+                                alt="New course hero: garden in full bloom"
+                                className="max-h-[340px] w-full rounded-md object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <p className="py-12 text-center text-sm text-white/40">No changes match this filter.</p>
+                          )}
+                        </>
+                      )
+                    ) : viewMode === "full" ? (
                       <>
                         <div className="mb-6 rounded-lg border border-[#404040] bg-[#2A2B2E] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
                           <DiffCurriculumStaticContent pageTitle={breadcrumbTitle} />
@@ -1041,7 +1366,10 @@ export function DiffViewModal({
                                         <span className="min-w-0 flex-1 truncate">{barLabel}</span>
                                         <button
                                           type="button"
-                                          onClick={() => setDetailQuestionIndex(qIdx)}
+                                          onClick={() => {
+                                            setDetailLectureTextOpen(false);
+                                            setDetailQuestionIndex(qIdx);
+                                          }}
                                           className="shrink-0 rounded border border-[#6aad4a]/60 bg-[#253920] px-2.5 py-1 text-[11px] font-medium text-[#d4f5bc] hover:bg-[#2f4a28]"
                                         >
                                           View detail
@@ -1096,7 +1424,10 @@ export function DiffViewModal({
                                 <span className="min-w-0 flex-1 truncate">{barLabel}</span>
                                 <button
                                   type="button"
-                                  onClick={() => setDetailQuestionIndex(qIdx)}
+                                  onClick={() => {
+                                            setDetailLectureTextOpen(false);
+                                            setDetailQuestionIndex(qIdx);
+                                          }}
                                   className="shrink-0 rounded border border-[#6aad4a]/60 bg-[#253920] px-2.5 py-1 text-[11px] font-medium text-[#d4f5bc] hover:bg-[#2f4a28]"
                                 >
                                   View detail
@@ -1191,12 +1522,12 @@ export function DiffViewModal({
                   </article>
                 ) : hasTextDiff ? (
                   !textKind || filter === "all" || filter === textKind ? (
-                    <article className="rounded-lg border border-[#404040] bg-[#2A2B2E] p-6 sm:p-8">
-                      <header className="mb-5 border-b border-[#525252] pb-4">
-                        <h1 className="text-[1.35rem] font-medium leading-tight text-white/95 sm:text-2xl">{breadcrumbTitle}</h1>
-                      </header>
-                      {renderTextRows(viewMode)}
-                    </article>
+                    <div className="overflow-hidden rounded-lg border border-[#404040] bg-[#2A2B2E] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
+                      <DiffCurriculumFullPageLayout
+                        pageTitle={breadcrumbTitle}
+                        introductionSlot={textKind ? renderCurriculumInlineTextIntro(viewMode) : defaultCurriculumIntro}
+                      />
+                    </div>
                   ) : (
                     <p className="py-12 text-center text-sm text-white/40">No changes match this filter.</p>
                   )
@@ -1245,8 +1576,16 @@ export function DiffViewModal({
                 ) : null}
               </div>
             ) : null}
-            <div className="flex-1 space-y-0 px-3.5 py-3">
-              <p className="mb-2.5 text-[11px] font-medium uppercase tracking-wider text-white/35">Summary</p>
+            <div className="flex min-h-0 flex-1 flex-col px-3.5 py-3">
+              <div className="mb-2.5 flex min-h-[28px] items-center justify-between gap-2">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-white/35">Summary</p>
+                <DialogClose
+                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-2 focus-visible:ring-offset-[#262626]"
+                  aria-label="Close"
+                >
+                  <X className="size-4" strokeWidth={2} />
+                </DialogClose>
+              </div>
               <div className="space-y-0 border-b border-white/[0.05] pb-1">
                 <div className="flex items-center justify-between py-1.5 text-[12px]">
                   <span className="text-white/45">Added</span>
@@ -1259,14 +1598,6 @@ export function DiffViewModal({
                 <div className="flex items-center justify-between py-1.5 text-[12px]">
                   <span className="text-white/45">Removed</span>
                   <span className={cn("font-medium tabular-nums", torus.removed)}>{stats.removed}</span>
-                </div>
-                <div className="flex items-center justify-between py-1.5 text-[12px]">
-                  <span className="text-white/45">Pages in set</span>
-                  <span className="font-medium tabular-nums text-white/70">{totalPages}</span>
-                </div>
-                <div className="flex items-center justify-between py-1.5 text-[12px]">
-                  <span className="text-white/45">Active changes</span>
-                  <span className="font-medium tabular-nums text-white/70">{changeList.length}</span>
                 </div>
               </div>
             </div>
@@ -1281,8 +1612,18 @@ export function DiffViewModal({
                     className={cn(
                       "rounded px-2 py-1 text-[11px] transition-colors",
                       "border border-white/12 text-white/50 hover:bg-white/[0.05]",
-                      f === filter && f !== "all" && "border-[#639922]/40 bg-[#639922]/12 text-[#97c459]",
-                      f === filter && f === "all" && "border-white/30 bg-white/[0.14] font-medium text-white",
+                      f === filter &&
+                        f === "all" &&
+                        "border-white/30 bg-white/[0.14] font-medium text-white",
+                      f === filter &&
+                        f === "added" &&
+                        "border-[#4a7c2f]/65 bg-[#639922]/16 font-medium text-[#97c459]",
+                      f === filter &&
+                        f === "edited" &&
+                        "border-[#c78a2a]/55 bg-[#8a6218]/28 font-medium text-[#f5d08a]",
+                      f === filter &&
+                        f === "removed" &&
+                        "border-[#c45a5a]/55 bg-[#6b2f2f]/40 font-medium text-[#f5c0c0]",
                     )}
                   >
                     {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
@@ -1294,6 +1635,7 @@ export function DiffViewModal({
         </div>
 
         {renderDetailOverlay()}
+        {renderLectureTextDetailOverlay()}
       </DialogContent>
     </Dialog>
   );

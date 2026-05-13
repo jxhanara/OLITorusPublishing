@@ -29,8 +29,8 @@ export function PublishDashboard() {
   const [publishStatus, setPublishStatus] = useState<"idle" | "publishing" | "success" | "error">("idle");
   const [publishProgress, setPublishProgress] = useState(0);
   const [changeDescription, setChangeDescription] = useState("");
-  const [includedPendingChangeIds, setIncludedPendingChangeIds] = useState<string[]>(
-    getDefaultIncludedPendingChangeIds,
+  const [includedPendingChangeIds, setIncludedPendingChangeIds] = useState<string[]>(() =>
+    getDefaultIncludedPendingChangeIds(),
   );
   const pendingChangeTotal = getPendingChangeCount();
   const includedPendingCount = includedPendingChangeIds.length;
