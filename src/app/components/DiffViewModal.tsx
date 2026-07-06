@@ -10,7 +10,7 @@ import {
 import { ScrollArea } from "./ui/scroll-area";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { ChevronRight, ChevronLeft, X, GripVertical, Copy, Trash2, Pencil, Users, MoreHorizontal } from "lucide-react";
+import { ChevronRight, ChevronLeft, X, Pencil, Users, CirclePlus, CircleMinus, CornerDownRight, Eye, Lock } from "lucide-react";
 import { cn } from "./ui/utils";
 import { DiffCurriculumFullPageLayout, DiffCurriculumStaticContent } from "./DiffCurriculumStaticContent";
 
@@ -44,6 +44,26 @@ export interface PageChange {
 
 type ChangeKind = "added" | "edited" | "removed";
 
+/** Jump-flash ring color per change kind (DS: Added green / Edited orange / Removed red). */
+const FLASH_RGBA: Record<ChangeKind, string> = {
+  added: "rgba(57, 229, 129, 0.6)", // var(--ol-action-added)
+  edited: "rgba(255, 144, 64, 0.6)", // var(--ol-diff-edited)
+  removed: "rgba(255, 64, 64, 0.6)", // var(--ol-diff-removed)
+};
+
+/** Selected side-panel card fill/border per change kind, matching the legend (DS values). */
+function activeCardAccent(kind: ChangeKind) {
+  switch (kind) {
+    case "added":
+      return "border-[var(--ol-diff-added)]/55 bg-[var(--ol-diff-added)]/18";
+    case "removed":
+      return "border-[var(--ol-diff-removed)]/55 bg-[var(--ol-diff-removed-bg)]";
+    case "edited":
+    default:
+      return "border-[var(--ol-diff-edited)]/55 bg-[var(--ol-diff-edited-bg)]";
+  }
+}
+
 interface ChangeListEntry {
   id: string;
   kind: ChangeKind;
@@ -62,6 +82,8 @@ interface DiffViewModalProps {
   newVersion?: string;
   pageName: string;
   changes?: PageChange[];
+  /** Read-only banner copy. Defaults to the Course Author wording; Instructors pass their own. */
+  previewNote?: string;
   /** When set, show primary actions in the right column (e.g. wire to publish flow). */
   onPublishChanges?: () => void;
   onDiscardAll?: () => void;
@@ -69,26 +91,26 @@ interface DiffViewModalProps {
 
 /** Figma export tokens (curriculum + chrome) */
 const torus = {
-  shell: "bg-[#0D0C0F]",
-  panel: "bg-[#262626]",
-  canvas: "bg-[#0D0C0F]",
-  inner: "bg-[#2A2B2E]",
-  hairline: "border-[#404040]",
-  link: "text-[#4CA6FF]",
-  linkUi: "text-[#3B76D3]",
-  crumbCurrent: "text-[#EEEBF5]",
-  hair: "#525252",
-  prose: "text-[#F5F5F5]",
-  tableText: "text-[#D4D4D4]",
-  added: "text-[#97c459]",
-  addedBg: "bg-[#1f3d18]",
-  addedBorder: "border-[#4a7c2f]",
-  edited: "text-[#ef9f27]",
-  editedBg: "bg-[#ef9f27]/10",
-  editedBorder: "border-[#ef9f27]/40",
-  removed: "text-[#f09595]",
-  removedBg: "bg-[#e24b4a]/15",
-  publish: "bg-[#3B76D3] hover:bg-[#3264b8] text-white",
+  shell: "bg-[var(--ol-page-bg)]",
+  panel: "bg-[var(--ol-card-bg)]",
+  canvas: "bg-[var(--ol-page-bg)]",
+  inner: "bg-[var(--ol-input-bg)]",
+  hairline: "border-[var(--ol-border)]",
+  link: "text-[var(--ol-link-strong)]",
+  linkUi: "text-[var(--ol-link-strong)]",
+  crumbCurrent: "text-[var(--ol-text)]",
+  hair: "var(--ol-border)",
+  prose: "text-[var(--ol-text)]",
+  tableText: "text-[var(--ol-text-muted)]",
+  added: "text-[var(--ol-action-added)]",
+  addedBg: "bg-[var(--ol-diff-added)]/18",
+  addedBorder: "border-[var(--ol-diff-added)]",
+  edited: "text-[var(--ol-action-edited)]",
+  editedBg: "bg-[var(--ol-diff-edited-bg)]",
+  editedBorder: "border-[var(--ol-diff-edited)]/55",
+  removed: "text-[var(--ol-action-removed)]",
+  removedBg: "bg-[var(--ol-diff-removed-bg)]",
+  publish: "bg-[#0062F2] hover:bg-[#0D70FF] text-white",
 } as const;
 
 function loStatusToKind(status?: string): ChangeKind | null {
@@ -144,9 +166,9 @@ function mergedAnswers(current: QuizQuestion, next: QuizQuestion) {
 
 function LearnByDoingStrip() {
   return (
-    <div className="flex items-center gap-3 bg-[#404040] px-8 py-4">
-      <Pencil className="size-5 shrink-0 text-[#FAFAFA]" strokeWidth={1.75} aria-hidden />
-      <span className="text-[20px] font-semibold uppercase leading-5 tracking-tight text-[#FAFAFA]">Learn by doing</span>
+    <div className="flex items-center gap-3 bg-[var(--ol-panel)] px-8 py-4">
+      <Pencil className="size-5 shrink-0 text-[var(--ol-text)]" strokeWidth={1.75} aria-hidden />
+      <span className="text-[20px] font-semibold uppercase leading-5 tracking-tight text-[var(--ol-text)]">Learn by doing</span>
     </div>
   );
 }
@@ -156,7 +178,7 @@ function LbdToolbarRow() {
     <div className="mb-3 flex flex-wrap items-center justify-end gap-2 px-1 pt-0.5">
       <button
         type="button"
-        className="inline-flex items-center gap-1 rounded-sm border border-[#525252] bg-[#262626] px-2 py-1.5 text-[12px] text-[#BAB8BF]"
+        className="inline-flex items-center gap-1 rounded-sm border border-[var(--ol-border)] bg-[var(--ol-card-bg)] px-2 py-1.5 text-[12px] text-[var(--ol-text-muted)]"
         aria-label="Collaborators"
       >
         <Users className="size-4" strokeWidth={1.75} />
@@ -164,13 +186,10 @@ function LbdToolbarRow() {
       </button>
       <button
         type="button"
-        className="inline-flex items-center gap-1 rounded-sm border border-[#525252] bg-[#262626] px-2 py-1.5 text-[12px] text-white/90"
+        className="inline-flex items-center gap-1 rounded-sm border border-[var(--ol-border)] bg-[var(--ol-card-bg)] px-2 py-1.5 text-[12px] text-[var(--ol-text)]/90"
       >
         Learn by doing
         <ChevronRight className="size-3 rotate-90 opacity-70" aria-hidden />
-      </button>
-      <button type="button" className="rounded-sm p-2 text-white/80 hover:bg-white/5" aria-label="Delete section">
-        <Trash2 className="size-4" strokeWidth={1.75} />
       </button>
     </div>
   );
@@ -178,12 +197,9 @@ function LbdToolbarRow() {
 
 function ScenarioPreviewBlock() {
   return (
-    <div className="relative rounded-lg border border-[#404040] bg-[#2A2B2E] px-6 py-5 shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
-      <button type="button" className="absolute right-4 top-4 rounded-sm p-2 text-white/80 hover:bg-white/5" aria-label="Delete scenario">
-        <Trash2 className="size-4" strokeWidth={1.75} />
-      </button>
-      <h3 className="pr-10 text-2xl font-normal leading-9 text-white">Scenario: Yellowing Tomato Leaves</h3>
-      <p className="mt-3 text-base leading-8 text-[#F5F5F5]">
+    <div className="rounded-lg border border-[var(--ol-border)] bg-[var(--ol-input-bg)] px-6 py-5 shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
+      <h3 className="text-xl font-normal leading-8 text-[var(--ol-text)]">Scenario: Yellowing Tomato Leaves</h3>
+      <p className="mt-3 text-base leading-8 text-[var(--ol-text)]">
         <span className="font-medium">Prompt:</span> You&apos;re growing a tomato plant in a container on your patio. For
         the past week, the lower (older) leaves have turned yellow and are falling off. The top of the plant is still green
         and growing, but not vigorously.
@@ -201,91 +217,64 @@ function MultipleChoiceQuestionInner({
 }) {
   return (
     <div className="space-y-5 px-5 pb-8 pt-6 sm:px-8">
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-transparent pb-1">
-          <div className="flex flex-wrap items-end gap-2">
-            <h3 className="text-2xl font-normal leading-9 text-white">Multiple Choice</h3>
-            <span className="cursor-default rounded-sm px-2 py-1 text-[14px] text-[#3B76D3]">Edit Title</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <button type="button" className="rounded-sm p-3 text-[#3B76D3] hover:bg-white/5" aria-label="Duplicate">
-              <Copy className="size-4" strokeWidth={2} />
-            </button>
-            <button type="button" className="rounded-sm p-2 text-white hover:bg-white/5" aria-label="Delete">
-              <Trash2 className="size-4" strokeWidth={1.75} />
-            </button>
-          </div>
+        <div className="border-b border-transparent pb-1">
+          <h3 className="text-xl font-normal leading-8 text-[var(--ol-text)]">Multiple Choice</h3>
         </div>
 
-        <div className="rounded-md border border-[#404040] bg-[#3E3F44] px-6 py-4">
-          <p className="text-lg font-normal leading-[27px] text-white">Learning Objectives</p>
-          <div className="mt-1 rounded border border-[#404040] bg-[#262626] px-1.5 py-2">
-            <p className="text-[16px] text-[#737373]">Linked to page objectives above.</p>
+        <div className="rounded-md border border-[var(--ol-border)] bg-[var(--ol-panel)] px-6 py-4">
+          <p className="text-lg font-normal leading-[27px] text-[var(--ol-text)]">Learning Objectives</p>
+          <div className="mt-1 rounded border border-[var(--ol-border)] bg-[var(--ol-card-bg)] px-1.5 py-2">
+            <p className="text-[16px] text-[var(--ol-text-muted)]">Linked to page objectives above.</p>
           </div>
         </div>
 
         <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-end border-b border-[#525252]">
-            <div className="border-b-2 border-[#4CA6FF] px-3 pb-2.5 pt-2 text-center text-[14px] font-medium uppercase leading-[17.5px] text-[#F5F5F5]">
+          <div className="flex flex-wrap items-end border-b border-[var(--ol-border)]">
+            <div className="border-b-2 border-[var(--ol-link-strong)] px-3 pb-2.5 pt-2 text-center text-[14px] font-medium uppercase leading-[17.5px] text-[var(--ol-text)]">
               Question
             </div>
             {["Answer key", "Hints", "Explanation", "Dynamic variables"].map((t) => (
-              <button
+              <span
                 key={t}
-                type="button"
-                className="px-3 pb-2.5 pt-2 text-center text-[14px] font-medium uppercase leading-[17.5px] text-[#3B76D3] hover:text-[#4CA6FF]"
+                className="px-3 pb-2.5 pt-2 text-center text-[14px] font-medium uppercase leading-[17.5px] text-[var(--ol-link-strong)]"
               >
                 {t}
-              </button>
+              </span>
             ))}
-            <button type="button" className="ml-auto px-2 py-2 text-[#BAB8BF] hover:text-white" aria-label="More">
-              <MoreHorizontal className="size-5" />
-            </button>
           </div>
-          <div className="rounded border border-[#D4D4D4] bg-[#2A2B2E] p-2">
-            <p className="text-[16px] font-normal leading-8 text-[#F5F5F5]">{neu.question}</p>
-          </div>
-          <div className="space-y-4 pt-6">
+          <p className="px-1 pt-1 text-[16px] font-normal leading-8 text-[var(--ol-text)]">{neu.question}</p>
+          <ul className="space-y-3 pt-4">
             {merged.map((opt, oi) => (
-              <div
+              <li
                 key={`${oi}-${opt.text}`}
                 className={cn(
-                  "relative flex min-h-[50px] items-stretch rounded bg-[#2A2B2E]",
-                  opt.status === "added" && "ring-1 ring-[#4a7c2f]",
-                  opt.status === "removed" && "opacity-70",
+                  "relative flex items-center gap-3 rounded px-1",
+                  opt.status === "removed" && "opacity-80",
                 )}
               >
-                <div className="flex w-8 shrink-0 items-center justify-center">
-                  <GripVertical className="size-3.5 text-[#737373]" aria-hidden />
-                </div>
-                <div className="flex w-8 shrink-0 items-center justify-center">
-                  <span className="size-4 shrink-0 rounded-full border border-[#737373] bg-[#262626]" aria-hidden />
-                </div>
-                <div className="min-w-0 flex-1 py-2 pr-2">
-                  <div
-                    className={cn(
-                      "rounded border px-2 py-1 text-[16px] font-normal leading-8 text-[#F5F5F5]",
-                      "border-[#D4D4D4] bg-[#2A2B2E]",
-                      opt.status === "added" && "border-[#5a9440]/70 bg-[#1f3d18]/40",
-                      opt.status === "removed" && "border-[#a34a4a]/60 line-through opacity-90",
-                    )}
-                  >
-                    {opt.text}
-                  </div>
-                </div>
-                <div className="flex w-12 shrink-0 items-center justify-center">
-                  <X className="size-4 text-[#F5F5F5]" aria-hidden />
-                </div>
+                <span className="size-4 shrink-0 rounded-full border border-[var(--ol-text-muted)] bg-[var(--ol-card-bg)]" aria-hidden />
+                <span
+                  className={cn(
+                    "min-w-0 flex-1 text-[16px] font-normal leading-8",
+                    opt.status === "added" ? "text-[var(--ol-action-added)]" : "text-[var(--ol-text)]",
+                    opt.status === "removed" && "text-[var(--ol-action-removed)] line-through",
+                  )}
+                >
+                  {opt.text}
+                </span>
                 {opt.status === "added" ? (
-                  <span className="absolute -right-1 -top-2 rounded bg-[#3d6b28] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[#e8ffc8]">
+                  <span className="shrink-0 rounded bg-[var(--ol-diff-added)] px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">
                     New
                   </span>
                 ) : null}
-              </div>
+                {opt.status === "removed" ? (
+                  <span className="shrink-0 rounded bg-[var(--ol-diff-removed)] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--ol-card-bg)]">
+                    Removed
+                  </span>
+                ) : null}
+              </li>
             ))}
-          </div>
-          <button type="button" className="pl-8 pt-2 text-left text-[16px] leading-6 text-[#3B76D3] hover:underline">
-            Add choice
-          </button>
+          </ul>
         </div>
     </div>
   );
@@ -293,7 +282,7 @@ function MultipleChoiceQuestionInner({
 
 function MultipleChoiceQuestionCard(props: { neu: QuizQuestion; merged: ReturnType<typeof mergedAnswers> }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-[#404040] bg-[#2A2B2E] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
+    <div className="overflow-hidden rounded-lg border border-[var(--ol-border)] bg-[var(--ol-input-bg)] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
       <MultipleChoiceQuestionInner {...props} />
     </div>
   );
@@ -302,74 +291,42 @@ function MultipleChoiceQuestionCard(props: { neu: QuizQuestion; merged: ReturnTy
 function CheckAllThatApplyStaticPreview() {
   const choices = ["Add composted manure", "Apply a balanced 10-10-10 fertilizer", "Increase watering frequency", "Add iron foliar spray"];
   return (
-    <div className="mt-2 overflow-hidden rounded-lg border border-[#404040] bg-[#2A2B2E] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
+    <div className="mt-2 overflow-hidden rounded-lg border border-[var(--ol-border)] bg-[var(--ol-input-bg)] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
       <div className="space-y-5 px-5 pb-8 pt-6 sm:px-8">
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-transparent pb-1">
-          <div className="flex flex-wrap items-end gap-2">
-            <h3 className="text-2xl font-normal leading-9 text-white">Check All That Apply</h3>
-            <span className="cursor-default rounded-sm px-2 py-1 text-[14px] text-[#3B76D3]">Edit Title</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <button type="button" className="rounded-sm p-3 text-[#3B76D3] hover:bg-white/5" aria-label="Duplicate">
-              <Copy className="size-4" strokeWidth={2} />
-            </button>
-            <button type="button" className="rounded-sm p-2 text-white hover:bg-white/5" aria-label="Delete">
-              <Trash2 className="size-4" strokeWidth={1.75} />
-            </button>
-          </div>
+        <div className="border-b border-transparent pb-1">
+          <h3 className="text-xl font-normal leading-8 text-[var(--ol-text)]">Check All That Apply</h3>
         </div>
-        <div className="rounded-md border border-[#404040] bg-[#3E3F44] px-6 py-4">
-          <p className="text-lg font-normal leading-[27px] text-white">Learning Objectives</p>
-          <div className="mt-1 rounded border border-[#404040] bg-[#262626] px-1.5 py-2">
-            <p className="text-[16px] text-[#737373]">Select or Create learning objectives...</p>
+        <div className="rounded-md border border-[var(--ol-border)] bg-[var(--ol-panel)] px-6 py-4">
+          <p className="text-lg font-normal leading-[27px] text-[var(--ol-text)]">Learning Objectives</p>
+          <div className="mt-1 rounded border border-[var(--ol-border)] bg-[var(--ol-card-bg)] px-1.5 py-2">
+            <p className="text-[16px] text-[var(--ol-text-muted)]">Select or Create learning objectives...</p>
           </div>
         </div>
         <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-end border-b border-[#525252]">
-            <div className="border-b-2 border-[#4CA6FF] px-3 pb-2.5 pt-2 text-center text-[14px] font-medium uppercase leading-[17.5px] text-[#F5F5F5]">
+          <div className="flex flex-wrap items-end border-b border-[var(--ol-border)]">
+            <div className="border-b-2 border-[var(--ol-link-strong)] px-3 pb-2.5 pt-2 text-center text-[14px] font-medium uppercase leading-[17.5px] text-[var(--ol-text)]">
               Question
             </div>
             {["Answer key", "Hints", "Explanation", "Dynamic variables"].map((t) => (
-              <button
+              <span
                 key={t}
-                type="button"
-                className="px-3 pb-2.5 pt-2 text-center text-[14px] font-medium uppercase leading-[17.5px] text-[#3B76D3] hover:text-[#4CA6FF]"
+                className="px-3 pb-2.5 pt-2 text-center text-[14px] font-medium uppercase leading-[17.5px] text-[var(--ol-link-strong)]"
               >
                 {t}
-              </button>
+              </span>
             ))}
-            <button type="button" className="ml-auto px-2 py-2 text-[#BAB8BF] hover:text-white" aria-label="More">
-              <MoreHorizontal className="size-5" />
-            </button>
           </div>
-          <div className="rounded border border-[#D4D4D4] bg-[#2A2B2E] p-2">
-            <p className="text-[16px] font-normal leading-8 text-[#F5F5F5]">
-              Which of the following actions would help address the deficiency?
-            </p>
-          </div>
-          <div className="space-y-4 pt-6">
+          <p className="px-1 pt-1 text-[16px] font-normal leading-8 text-[var(--ol-text)]">
+            Which of the following actions would help address the deficiency?
+          </p>
+          <ul className="space-y-3 pt-4">
             {choices.map((text, oi) => (
-              <div key={oi} className="relative flex min-h-[50px] items-stretch rounded bg-[#2A2B2E]">
-                <div className="flex w-8 shrink-0 items-center justify-center">
-                  <GripVertical className="size-3.5 text-[#737373]" aria-hidden />
-                </div>
-                <div className="flex w-8 shrink-0 items-center justify-center">
-                  <span className="size-4 shrink-0 rounded border border-[#737373] bg-[#262626]" aria-hidden />
-                </div>
-                <div className="min-w-0 flex-1 py-2 pr-2">
-                  <div className="rounded border border-[#D4D4D4] bg-[#2A2B2E] px-2 py-1 text-[16px] font-normal leading-8 text-[#F5F5F5]">
-                    {text}
-                  </div>
-                </div>
-                <div className="flex w-12 shrink-0 items-center justify-center">
-                  <X className="size-4 text-[#F5F5F5]" aria-hidden />
-                </div>
-              </div>
+              <li key={oi} className="relative flex items-center gap-3 rounded px-1">
+                <span className="size-4 shrink-0 rounded border border-[var(--ol-text-muted)] bg-[var(--ol-card-bg)]" aria-hidden />
+                <span className="min-w-0 flex-1 text-[16px] font-normal leading-8 text-[var(--ol-text)]">{text}</span>
+              </li>
             ))}
-          </div>
-          <button type="button" className="pl-8 pt-2 text-left text-[16px] leading-6 text-[#3B76D3] hover:underline">
-            Add choice
-          </button>
+          </ul>
         </div>
       </div>
     </div>
@@ -404,7 +361,7 @@ function buildChangeList(page: PageChange): ChangeListEntry[] {
       const addedCount = neu.answers.filter(
         (a) => a.status === "added" || !cur.answers.some((c) => c.text === a.text),
       ).length;
-      label = addedCount > 0 ? `${qLabel} — ${addedCount} new answer choice${addedCount === 1 ? "" : "es"}` : `${qLabel} (new)`;
+      label = addedCount > 0 ? `${qLabel} — ${addedCount} new answer choice${addedCount === 1 ? "" : "s"}` : `${qLabel} (new)`;
     } else if (kind === "removed") {
       label = `${qLabel} — removed options`;
     } else if (cur.question.trim() !== neu.question.trim()) {
@@ -511,6 +468,7 @@ export function DiffViewModal({
   changes,
   currentVersion = "",
   newVersion = "",
+  previewNote = "You're reviewing saved changes. Content can't be edited from this view.",
   onPublishChanges,
   onDiscardAll,
 }: DiffViewModalProps) {
@@ -529,7 +487,8 @@ export function DiffViewModal({
   }, [changes, pageName]);
 
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
-  const [viewMode, setViewMode] = useState<ViewMode>("full");
+  // Full-page-in-context is the only diff view (the "View changes only" toggle was removed).
+  const viewMode: ViewMode = "full";
   const [filter, setFilter] = useState<FilterKind>("all");
   const [activeChangeId, setActiveChangeId] = useState<string | null>(null);
   const [detailQuestionIndex, setDetailQuestionIndex] = useState<number | null>(null);
@@ -540,7 +499,6 @@ export function DiffViewModal({
   useEffect(() => {
     if (open) {
       setCurrentPageIndex(0);
-      setViewMode("full");
       setFilter("all");
       setActiveChangeId(null);
       setDetailQuestionIndex(null);
@@ -644,14 +602,14 @@ export function DiffViewModal({
     }
   }, [activeChangeId, filteredChangeList]);
 
-  const scrollToTarget = useCallback((targetId: string) => {
+  const scrollToTarget = useCallback((targetId: string, kind: ChangeKind = "added") => {
     const root = centerScrollRef.current;
     if (!root) return;
     const el = root.querySelector(`#${CSS.escape(targetId)}`);
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
     if (el instanceof HTMLElement) {
       el.style.transition = "box-shadow 0.3s";
-      el.style.boxShadow = "0 0 0 2px rgba(99, 153, 34, 0.55)";
+      el.style.boxShadow = `0 0 0 2px ${FLASH_RGBA[kind]}`;
       window.setTimeout(() => {
         el.style.boxShadow = "";
       }, 1200);
@@ -672,36 +630,54 @@ export function DiffViewModal({
   const showRightActions = Boolean(onPublishChanges || onDiscardAll);
 
   const navButtonClass = cn(
-    "inline-flex size-9 shrink-0 items-center justify-center rounded-sm border border-[#525252] bg-[#262626] text-[#2B8BFE] transition-all outline-none",
-    "hover:border-[#3B76D3] hover:bg-[#2A2B2E]",
-    "focus-visible:ring-2 focus-visible:ring-[#3B76D3]/40",
+    "inline-flex size-9 shrink-0 items-center justify-center rounded-sm border border-[var(--ol-border)] bg-[var(--ol-card-bg)] text-[var(--ol-link-strong)] transition-all outline-none",
+    "hover:border-[var(--ol-link-strong)] hover:bg-[var(--ol-input-bg)]",
+    "focus-visible:ring-2 focus-visible:ring-[var(--ol-link-strong)]",
     "disabled:pointer-events-none disabled:opacity-35",
   );
 
   const badgeClass = (kind: ChangeKind) =>
     cn(
       "inline-flex items-center rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
-      kind === "added" && "bg-[#3d6b28] text-[#060806] ring-1 ring-[#5a9440]/55",
-      kind === "edited" && "bg-[#8a6218] text-[#0c0902] ring-1 ring-[#c78a2a]/40",
-      kind === "removed" && "bg-[#6b2f2f] text-[#0a0404] ring-1 ring-[#a34a4a]/45",
+      kind === "added" && "bg-[var(--ol-diff-added)] text-white ring-1 ring-[var(--ol-action-added)]/45",
+      kind === "edited" && "bg-[var(--ol-diff-edited)] text-[var(--ol-card-bg)] ring-1 ring-[var(--ol-diff-edited)]/45",
+      kind === "removed" && "bg-[var(--ol-diff-removed)] text-[var(--ol-card-bg)] ring-1 ring-[var(--ol-diff-removed)]/45",
+    );
+
+  /** Outline color for a changed block, keyed to the diff kind (added green / edited amber / removed red). */
+  const kindOutlineClass = (kind: ChangeKind | null) =>
+    cn(
+      kind === "edited" && "outline-[var(--ol-diff-edited)]/55",
+      kind === "removed" && "outline-[var(--ol-diff-removed)]/55",
+      (kind === "added" || kind === null) && "outline-[var(--ol-diff-added)]",
+    );
+
+  /** "View detail" button styling tinted to the diff kind so it doesn't always read as "added". */
+  const detailButtonClass = (kind: ChangeKind | null) =>
+    cn(
+      "shrink-0 rounded px-2.5 py-1 text-[11px] font-medium transition-colors",
+      kind === "edited" && "border border-[var(--ol-diff-edited)]/55 bg-[var(--ol-diff-edited-bg)] text-[var(--ol-action-edited)] hover:bg-[var(--ol-diff-edited-bg)]/80",
+      kind === "removed" && "border border-[var(--ol-diff-removed)]/55 bg-[var(--ol-diff-removed-bg)] text-[var(--ol-action-removed)] hover:bg-[var(--ol-diff-removed-bg)]/80",
+      (kind === "added" || kind === null) &&
+        "border border-[var(--ol-diff-added)]/60 bg-[var(--ol-diff-added)]/18 text-[var(--ol-action-added)] hover:bg-[var(--ol-diff-added)]/28",
     );
 
   /** Flowing page body: edits read as part of the lesson, not a detached editor. */
   const renderCurriculumInlineTextIntro = (mode: ViewMode) => {
     if (!textKind) return null;
-    const prose = "text-base font-normal leading-8 text-[#F5F5F5]";
+    const prose = "text-base font-normal leading-8 text-[var(--ol-text)]";
 
     return (
       <div id="diff-text-block" className="mt-3 space-y-4">
         <div className="flex flex-wrap items-center justify-end gap-3 border-b border-white/[0.06] pb-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-white/40">Page body</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ol-text)]/40">Page body</span>
           <button
             type="button"
             onClick={() => {
               setDetailQuestionIndex(null);
               setDetailLectureTextOpen(true);
             }}
-            className="text-[13px] font-medium text-[#99CCFF] underline-offset-2 hover:underline"
+            className="text-[13px] font-medium text-[var(--ol-link)] underline-offset-2 hover:underline"
           >
             View full text comparison
           </button>
@@ -714,18 +690,18 @@ export function DiffViewModal({
             const isBullet = t.startsWith("-");
             return (
               <p key={idx} className={cn(prose, isBullet && "pl-1")}>
-                {isBullet ? <span className="mr-2 text-[#737373]" aria-hidden>•</span> : null}
+                {isBullet ? <span className="mr-2 text-[var(--ol-text-muted)]" aria-hidden>•</span> : null}
                 {isBullet ? t.replace(/^-\s*/, "") : row.neu}
               </p>
             );
           }
           if (row.kind === "del") {
             return (
-              <div key={idx} className="relative rounded pt-2 ring-1 ring-[#c45a5a]/75">
-                <span className="absolute -right-0.5 -top-2 z-10 rounded bg-[#6b2f2f] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#f5d0d0] shadow-sm ring-1 ring-[#a34a4a]/50">
+              <div key={idx} className="relative rounded pt-2 ring-1 ring-[var(--ol-diff-removed)]/75">
+                <span className="absolute -right-0.5 -top-2 z-10 rounded bg-[var(--ol-diff-removed)] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--ol-card-bg)] shadow-sm ring-1 ring-[var(--ol-diff-removed)]/50">
                   Removed
                 </span>
-                <div className="rounded border border-[#a34a4a]/65 bg-[#261414]/35 px-3 py-2.5">
+                <div className="rounded border border-[var(--ol-diff-removed)]/65 bg-[var(--ol-diff-removed-bg)] px-3 py-2.5">
                   <p className={cn("text-base leading-8 line-through", torus.removed)}>{row.old || " "}</p>
                 </div>
               </div>
@@ -733,25 +709,25 @@ export function DiffViewModal({
           }
           if (row.kind === "add") {
             return (
-              <div key={idx} className="relative rounded pt-2 ring-1 ring-[#4a7c2f]">
-                <span className="absolute -right-0.5 -top-2 z-10 rounded bg-[#3d6b28] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#e8ffc8] shadow-sm ring-1 ring-[#5a9440]/55">
+              <div key={idx} className="relative rounded pt-2 ring-1 ring-[var(--ol-diff-added)]">
+                <span className="absolute -right-0.5 -top-2 z-10 rounded bg-[var(--ol-diff-added)] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm ring-1 ring-[var(--ol-diff-added)]/55">
                   New
                 </span>
-                <div className="rounded border border-[#5a9440]/70 bg-[#1f3d18]/40 px-3 py-2.5">
+                <div className="rounded border border-[var(--ol-diff-added)]/70 bg-[var(--ol-diff-added)]/18 px-3 py-2.5">
                   <p className={cn("text-base leading-8", torus.added)}>{row.neu || " "}</p>
                 </div>
               </div>
             );
           }
           return (
-            <div key={idx} className="relative rounded pt-2 ring-1 ring-[#c78a2a]/75">
-              <span className="absolute -right-0.5 -top-2 z-10 rounded bg-[#8a6218] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#0c0902] shadow-sm ring-1 ring-[#c78a2a]/45">
+            <div key={idx} className="relative rounded pt-2 ring-1 ring-[var(--ol-diff-edited)]/75">
+              <span className="absolute -right-0.5 -top-2 z-10 rounded bg-[var(--ol-diff-edited)] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--ol-card-bg)] shadow-sm ring-1 ring-[var(--ol-diff-edited)]/45">
                 Edited
               </span>
-              <div className="rounded border border-[#c78a2a]/55 bg-[#2a2418]/55 px-3 py-2.5">
-                <p className="text-base leading-8 text-[#F5F5F5]">
-                  <span className="text-[#f09595] line-through decoration-[#f09595]/90">{row.old || " "}</span>
-                  <span className="mx-1.5 text-white/25" aria-hidden>
+              <div className="rounded border border-[var(--ol-diff-edited)]/55 bg-[var(--ol-diff-edited-bg)]/70 px-3 py-2.5">
+                <p className="text-base leading-8 text-[var(--ol-text)]">
+                  <span className="text-[var(--ol-action-removed)] line-through decoration-[var(--ol-action-removed)]/90">{row.old || " "}</span>
+                  <span className="mx-1.5 text-[var(--ol-text)]/25" aria-hidden>
                     →
                   </span>
                   <span className={cn(torus.added)}>{row.neu || " "}</span>
@@ -765,7 +741,7 @@ export function DiffViewModal({
   };
 
   const defaultCurriculumIntro = (
-    <p className="mt-3 text-base font-normal leading-8 text-[#F5F5F5]">
+    <p className="mt-3 text-base font-normal leading-8 text-[var(--ol-text)]">
       Just like humans need a balanced diet to stay healthy, plants need a variety of nutrients to grow, reproduce, and
       resist disease. These nutrients are mostly absorbed from the soil through the plant&apos;s roots and play specific roles
       in development. When a plant lacks one or more key nutrients, it often shows visible symptoms such as yellow leaves,
@@ -777,10 +753,10 @@ export function DiffViewModal({
     if (!textKind) return null;
     const outlineClass =
       textKind === "added"
-        ? "rounded-lg p-1 outline outline-2 outline-offset-[-1px] outline-[#4a7c2f] sm:p-1.5"
+        ? "rounded-lg p-1 outline outline-2 outline-offset-[-1px] outline-[var(--ol-diff-added)] sm:p-1.5"
         : textKind === "removed"
-          ? "rounded-lg p-1 outline outline-2 outline-offset-[-1px] outline-[#e24b4a]/55 sm:p-1.5"
-          : "rounded-lg p-1 outline outline-2 outline-offset-[-1px] outline-[#ef9f27]/55 sm:p-1.5";
+          ? "rounded-lg p-1 outline outline-2 outline-offset-[-1px] outline-[var(--ol-diff-removed)]/55 sm:p-1.5"
+          : "rounded-lg p-1 outline outline-2 outline-offset-[-1px] outline-[var(--ol-diff-edited)]/55 sm:p-1.5";
     const barLabel =
       textKind === "added" ? "Added — page text" : textKind === "removed" ? "Removed — page text" : "Edited — page text";
 
@@ -789,9 +765,9 @@ export function DiffViewModal({
         <div
           className={cn(
             "flex flex-wrap items-center justify-between gap-2 rounded-md px-3 py-2 text-[11px] font-semibold",
-            textKind === "added" && "bg-[#1a2614] text-[#c8f0a4]",
-            textKind === "edited" && "bg-[#2a2418] text-[#f5d08a]",
-            textKind === "removed" && "bg-[#261414] text-[#f5c0c0]",
+            textKind === "added" && "bg-[var(--ol-diff-added)]/18 text-[var(--ol-action-added)]",
+            textKind === "edited" && "bg-[var(--ol-diff-edited-bg)] text-[var(--ol-action-edited)]",
+            textKind === "removed" && "bg-[var(--ol-diff-removed-bg)] text-[var(--ol-action-removed)]",
           )}
         >
           <span className="min-w-0 flex-1 truncate">{barLabel}</span>
@@ -801,45 +777,33 @@ export function DiffViewModal({
               setDetailQuestionIndex(null);
               setDetailLectureTextOpen(true);
             }}
-            className="shrink-0 rounded border border-[#6aad4a]/60 bg-[#253920] px-2.5 py-1 text-[11px] font-medium text-[#d4f5bc] hover:bg-[#2f4a28]"
+            className={detailButtonClass(textKind)}
           >
             View detail
           </button>
         </div>
 
-        <div className="overflow-hidden rounded-lg border border-[#404040] bg-[#2A2B2E] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
+        <div className="overflow-hidden rounded-lg border border-[var(--ol-border)] bg-[var(--ol-input-bg)] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
           <div className="space-y-5 px-5 pb-8 pt-6 sm:px-8">
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-transparent pb-1">
-              <div className="flex flex-wrap items-end gap-2">
-                <h3 className="text-2xl font-normal leading-9 text-white">Page text</h3>
-                <span className="cursor-default rounded-sm px-2 py-1 text-[14px] text-[#3B76D3]">Edit Title</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <button type="button" className="rounded-sm p-3 text-[#3B76D3] hover:bg-white/5" aria-label="Duplicate">
-                  <Copy className="size-4" strokeWidth={2} />
-                </button>
-                <button type="button" className="rounded-sm p-2 text-white hover:bg-white/5" aria-label="Delete">
-                  <Trash2 className="size-4" strokeWidth={1.75} />
-                </button>
-              </div>
+            <div className="border-b border-transparent pb-1">
+              <h3 className="text-xl font-normal leading-8 text-[var(--ol-text)]">Page text</h3>
             </div>
 
-            <div className="flex flex-wrap items-end border-b border-[#525252]">
-              <div className="border-b-2 border-[#4CA6FF] px-3 pb-2.5 pt-2 text-center text-[14px] font-medium uppercase leading-[17.5px] text-[#F5F5F5]">
+            <div className="flex flex-wrap items-end border-b border-[var(--ol-border)]">
+              <div className="border-b-2 border-[var(--ol-link-strong)] px-3 pb-2.5 pt-2 text-center text-[14px] font-medium uppercase leading-[17.5px] text-[var(--ol-text)]">
                 Content
               </div>
               {["Settings", "History"].map((t) => (
-                <button
+                <span
                   key={t}
-                  type="button"
-                  className="px-3 pb-2.5 pt-2 text-center text-[14px] font-medium uppercase leading-[17.5px] text-[#3B76D3] hover:text-[#4CA6FF]"
+                  className="px-3 pb-2.5 pt-2 text-center text-[14px] font-medium uppercase leading-[17.5px] text-[var(--ol-link-strong)]"
                 >
                   {t}
-                </button>
+                </span>
               ))}
             </div>
 
-            <div className="rounded border border-[#D4D4D4] bg-[#2A2B2E] p-4">
+            <div className="rounded border border-[var(--ol-text-muted)] bg-[var(--ol-input-bg)] p-4">
               <div className="space-y-4 font-[family-name:var(--font-family-open)]">
                 {lineRows.map((row, idx) => {
                   if (mode === "diff" && row.kind === "same") return null;
@@ -847,18 +811,18 @@ export function DiffViewModal({
                     const t = (row.neu ?? "").trim();
                     if (!t) return <div key={idx} className="h-2" />;
                     return (
-                      <p key={idx} className="text-[16px] font-normal leading-8 text-[#F5F5F5]">
+                      <p key={idx} className="text-[16px] font-normal leading-8 text-[var(--ol-text)]">
                         {row.neu}
                       </p>
                     );
                   }
                   if (row.kind === "del") {
                     return (
-                      <div key={idx} className="relative rounded pt-2 ring-1 ring-[#c45a5a]/75">
-                        <span className="absolute -right-0.5 -top-2 z-10 rounded bg-[#6b2f2f] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#f5d0d0] shadow-sm ring-1 ring-[#a34a4a]/50">
+                      <div key={idx} className="relative rounded pt-2 ring-1 ring-[var(--ol-diff-removed)]/75">
+                        <span className="absolute -right-0.5 -top-2 z-10 rounded bg-[var(--ol-diff-removed)] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--ol-card-bg)] shadow-sm ring-1 ring-[var(--ol-diff-removed)]/50">
                           Removed
                         </span>
-                        <div className="rounded border border-[#a34a4a]/65 bg-[#261414]/35 px-3 py-2.5">
+                        <div className="rounded border border-[var(--ol-diff-removed)]/65 bg-[var(--ol-diff-removed-bg)] px-3 py-2.5">
                           <p className={cn("text-[16px] font-normal leading-8 line-through", torus.removed)}>{row.old || " "}</p>
                         </div>
                       </div>
@@ -866,25 +830,25 @@ export function DiffViewModal({
                   }
                   if (row.kind === "add") {
                     return (
-                      <div key={idx} className="relative rounded pt-2 ring-1 ring-[#4a7c2f]">
-                        <span className="absolute -right-0.5 -top-2 z-10 rounded bg-[#3d6b28] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#e8ffc8] shadow-sm ring-1 ring-[#5a9440]/55">
+                      <div key={idx} className="relative rounded pt-2 ring-1 ring-[var(--ol-diff-added)]">
+                        <span className="absolute -right-0.5 -top-2 z-10 rounded bg-[var(--ol-diff-added)] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm ring-1 ring-[var(--ol-diff-added)]/55">
                           New
                         </span>
-                        <div className="rounded border border-[#5a9440]/70 bg-[#1f3d18]/40 px-3 py-2.5">
+                        <div className="rounded border border-[var(--ol-diff-added)]/70 bg-[var(--ol-diff-added)]/18 px-3 py-2.5">
                           <p className={cn("text-[16px] font-normal leading-8", torus.added)}>{row.neu || " "}</p>
                         </div>
                       </div>
                     );
                   }
                   return (
-                    <div key={idx} className="relative rounded pt-2 ring-1 ring-[#c78a2a]/75">
-                      <span className="absolute -right-0.5 -top-2 z-10 rounded bg-[#8a6218] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#0c0902] shadow-sm ring-1 ring-[#c78a2a]/45">
+                    <div key={idx} className="relative rounded pt-2 ring-1 ring-[var(--ol-diff-edited)]/75">
+                      <span className="absolute -right-0.5 -top-2 z-10 rounded bg-[var(--ol-diff-edited)] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--ol-card-bg)] shadow-sm ring-1 ring-[var(--ol-diff-edited)]/45">
                         Edited
                       </span>
-                      <div className="rounded border border-[#c78a2a]/55 bg-[#2a2418]/55 px-3 py-2.5">
-                        <p className="text-[16px] font-normal leading-8 text-[#F5F5F5]">
+                      <div className="rounded border border-[var(--ol-diff-edited)]/55 bg-[var(--ol-diff-edited-bg)]/70 px-3 py-2.5">
+                        <p className="text-[16px] font-normal leading-8 text-[var(--ol-text)]">
                           <span className={cn("line-through", torus.removed)}>{row.old || " "}</span>
-                          <span className="mx-1.5 text-white/25" aria-hidden>
+                          <span className="mx-1.5 text-[var(--ol-text)]/25" aria-hidden>
                             →
                           </span>
                           <span className={cn(torus.added)}>{row.neu || " "}</span>
@@ -909,13 +873,13 @@ export function DiffViewModal({
 
     return (
       <div className={cn("absolute inset-0 z-[60] flex flex-col", torus.shell)} role="dialog" aria-modal="true" aria-label="Detailed comparison">
-        <div className={cn("flex items-center justify-between border-b border-[#404040] bg-[#262626] px-4 py-3")}>
-          <span className="text-sm font-medium text-[#EEEBF5]">Side-by-side: question {detailQuestionIndex + 1}</span>
+        <div className={cn("flex items-center justify-between border-b border-[var(--ol-border)] bg-[var(--ol-card-bg)] px-4 py-3")}>
+          <span className="text-sm font-medium text-[var(--ol-text)]">Side-by-side: question {detailQuestionIndex + 1}</span>
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="text-[#BAB8BF] hover:bg-white/10 hover:text-white"
+            className="text-[var(--ol-text-muted)] hover:bg-white/10 hover:text-[var(--ol-text)]"
             onClick={() => {
               setDetailQuestionIndex(null);
               setDetailLectureTextOpen(false);
@@ -925,14 +889,14 @@ export function DiffViewModal({
             Close detail
           </Button>
         </div>
-        <div className="grid min-h-0 flex-1 grid-cols-2 gap-0 border-b border-[#404040]">
-          <div className="flex min-h-0 flex-col border-r border-[#404040]">
-            <div className={cn("border-b border-[#525252] px-3 py-2 text-[11px] font-medium", torus.removedBg, torus.removed)}>
+        <div className="grid min-h-0 flex-1 grid-cols-2 gap-0 border-b border-[var(--ol-border)]">
+          <div className="flex min-h-0 flex-col border-r border-[var(--ol-border)]">
+            <div className={cn("border-b border-[var(--ol-border)] px-3 py-2 text-[11px] font-medium", torus.removedBg, torus.removed)}>
               Current
             </div>
-            <ScrollArea className="min-h-0 flex-1 bg-[#2A2B2E]">
+            <ScrollArea className="min-h-0 flex-1 bg-[var(--ol-input-bg)]">
               <div className="p-4">
-                <p className="mb-3 text-sm text-[#F5F5F5]">{cur.question}</p>
+                <p className="mb-3 text-sm text-[var(--ol-text)]">{cur.question}</p>
                 <ul className="space-y-2">
                   {cur.answers.map((a, i) => (
                     <li
@@ -940,11 +904,11 @@ export function DiffViewModal({
                       className={cn(
                         "flex items-center gap-2 rounded border px-3 py-2 text-sm",
                         a.status === "removed" || !neu.answers.some((n) => n.text === a.text)
-                          ? cn(torus.removedBg, "border-[#525252] line-through", torus.removed)
-                          : "border-[#525252] text-[#D4D4D4]",
+                          ? cn(torus.removedBg, "border-[var(--ol-border)] line-through", torus.removed)
+                          : "border-[var(--ol-border)] text-[var(--ol-text-muted)]",
                       )}
                     >
-                      <span className="h-3.5 w-3.5 shrink-0 rounded-full border-2 border-[#737373] opacity-90" />
+                      <span className="h-3.5 w-3.5 shrink-0 rounded-full border-2 border-[var(--ol-text-muted)] opacity-90" />
                       {a.text}
                     </li>
                   ))}
@@ -953,10 +917,10 @@ export function DiffViewModal({
             </ScrollArea>
           </div>
           <div className="flex min-h-0 flex-col">
-            <div className="border-b border-[#525252] bg-[#1f3d18] px-3 py-2 text-[11px] font-medium text-[#c8f5a8]">New</div>
-            <ScrollArea className="min-h-0 flex-1 bg-[#2A2B2E]">
+            <div className="border-b border-[var(--ol-border)] bg-[var(--ol-diff-added)]/18 px-3 py-2 text-[11px] font-medium text-[var(--ol-action-added)]">New</div>
+            <ScrollArea className="min-h-0 flex-1 bg-[var(--ol-input-bg)]">
               <div className="p-4">
-                <p className="mb-3 text-sm text-[#F5F5F5]">{neu.question}</p>
+                <p className="mb-3 text-sm text-[var(--ol-text)]">{neu.question}</p>
                 <ul className="space-y-2">
                   {neu.answers.map((a, i) => (
                     <li
@@ -964,14 +928,14 @@ export function DiffViewModal({
                       className={cn(
                         "flex items-center gap-2 rounded border px-3 py-2 text-sm",
                         a.status === "added" || !cur.answers.some((c) => c.text === a.text)
-                          ? cn("border-[#4a7c2f]/50 bg-[#1f3d18]/80", torus.added)
-                          : "border-[#525252] text-[#D4D4D4]",
+                          ? cn("border-[var(--ol-diff-added)]/50 bg-[var(--ol-diff-added)]/18", torus.added)
+                          : "border-[var(--ol-border)] text-[var(--ol-text-muted)]",
                       )}
                     >
                       <span className="h-3.5 w-3.5 shrink-0 rounded-full border-2 border-current opacity-80" />
                       {a.text}
                       {a.status === "added" ? (
-                        <Badge className="ml-auto border-0 bg-[#3d6b28]/40 text-[10px] text-[#c8f5a8]">Added</Badge>
+                        <Badge className="ml-auto border-0 bg-[var(--ol-diff-added)] text-[10px] text-white">Added</Badge>
                       ) : null}
                     </li>
                   ))}
@@ -995,34 +959,34 @@ export function DiffViewModal({
         aria-modal="true"
         aria-label="Page text side-by-side comparison"
       >
-        <div className={cn("flex items-center justify-between border-b border-[#404040] bg-[#262626] px-4 py-3")}>
-          <span className="text-sm font-medium text-[#EEEBF5]">Side-by-side: page text</span>
+        <div className={cn("flex items-center justify-between border-b border-[var(--ol-border)] bg-[var(--ol-card-bg)] px-4 py-3")}>
+          <span className="text-sm font-medium text-[var(--ol-text)]">Side-by-side: page text</span>
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="text-[#BAB8BF] hover:bg-white/10 hover:text-white"
+            className="text-[var(--ol-text-muted)] hover:bg-white/10 hover:text-[var(--ol-text)]"
             onClick={() => setDetailLectureTextOpen(false)}
           >
             <X className="size-4" />
             Close detail
           </Button>
         </div>
-        <div className="grid min-h-0 flex-1 grid-cols-2 gap-0 border-b border-[#404040]">
-          <div className="flex min-h-0 flex-col border-r border-[#404040]">
-            <div className={cn("border-b border-[#525252] px-3 py-2 text-[11px] font-medium", torus.removedBg, torus.removed)}>
+        <div className="grid min-h-0 flex-1 grid-cols-2 gap-0 border-b border-[var(--ol-border)]">
+          <div className="flex min-h-0 flex-col border-r border-[var(--ol-border)]">
+            <div className={cn("border-b border-[var(--ol-border)] px-3 py-2 text-[11px] font-medium", torus.removedBg, torus.removed)}>
               Current
             </div>
-            <ScrollArea className="min-h-0 flex-1 bg-[#2A2B2E]">
-              <pre className="whitespace-pre-wrap break-words p-4 font-[family-name:var(--font-family-open)] text-[14px] leading-relaxed text-[#D4D4D4]">
+            <ScrollArea className="min-h-0 flex-1 bg-[var(--ol-input-bg)]">
+              <pre className="whitespace-pre-wrap break-words p-4 font-[family-name:var(--font-family-open)] text-[14px] leading-relaxed text-[var(--ol-text-muted)]">
                 {currentText}
               </pre>
             </ScrollArea>
           </div>
           <div className="flex min-h-0 flex-col">
-            <div className="border-b border-[#525252] bg-[#1f3d18] px-3 py-2 text-[11px] font-medium text-[#c8f5a8]">New</div>
-            <ScrollArea className="min-h-0 flex-1 bg-[#2A2B2E]">
-              <pre className="whitespace-pre-wrap break-words p-4 font-[family-name:var(--font-family-open)] text-[14px] leading-relaxed text-[#D4D4D4]">
+            <div className="border-b border-[var(--ol-border)] bg-[var(--ol-diff-added)]/18 px-3 py-2 text-[11px] font-medium text-[var(--ol-action-added)]">New</div>
+            <ScrollArea className="min-h-0 flex-1 bg-[var(--ol-input-bg)]">
+              <pre className="whitespace-pre-wrap break-words p-4 font-[family-name:var(--font-family-open)] text-[14px] leading-relaxed text-[var(--ol-text-muted)]">
                 {newText}
               </pre>
             </ScrollArea>
@@ -1040,29 +1004,31 @@ export function DiffViewModal({
           /* Do not use `relative` here — it overrides Radix's `fixed` via tailwind-merge and portals the panel below the viewport (only the dimmed overlay is visible). */
           "flex h-[92vh] !max-w-[min(96vw,1680px)] w-[96vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-none",
           torus.shell,
-          "border-white/[0.08] text-white shadow-2xl",
+          "border-white/[0.08] text-[var(--ol-text)] shadow-2xl",
         )}
       >
         <DialogHeader className="sr-only">
           <DialogTitle>Review changes</DialogTitle>
-          <DialogDescription>Compare updates in full-page context or view changes only.</DialogDescription>
+          <DialogDescription>Compare updates in full-page context.</DialogDescription>
         </DialogHeader>
 
         <div className="relative flex min-h-0 flex-1 flex-col lg:flex-row">
           {/* Left: change list */}
           <aside
             className={cn(
-              "flex w-full shrink-0 flex-col border-b border-[#404040] bg-[#262626] lg:w-[260px] lg:border-r lg:border-b-0",
+              "flex w-full shrink-0 flex-col border-b border-[var(--ol-border)] bg-[var(--ol-card-bg)] lg:w-[260px] lg:border-r lg:border-b-0",
             )}
           >
-            <div className="border-b border-[#404040] px-4 py-3.5">
-              <p className="text-[13px] font-medium text-[#EEEBF5]">Changes to review</p>
-              <p className="mt-1 text-[11px] text-[#A3A3A3]">{selectedPage.title}</p>
+            <div className="border-b border-[var(--ol-border)] px-4 py-3">
+              <p className="text-[13px] font-medium text-[var(--ol-text)]">Changes to review</p>
+              <p className="mt-0.5 truncate text-[11px] text-[var(--ol-text-muted)]" title={selectedPage.title}>
+                {selectedPage.title}
+              </p>
             </div>
-            <ScrollArea className="min-h-[140px] max-h-[28vh] flex-1 lg:max-h-none">
+            <ScrollArea className="min-h-[140px] max-h-[28vh] flex-1 lg:max-h-none [&_[data-slot=scroll-area-viewport]>div]:!block [&_[data-slot=scroll-area-viewport]>div]:!w-full">
               <div className="p-2">
                 {filteredChangeList.length === 0 ? (
-                  <p className="px-2 py-4 text-center text-[12px] text-white/40">No changes match this filter.</p>
+                  <p className="px-2 py-4 text-center text-[12px] text-[var(--ol-text)]/40">No changes match this filter.</p>
                 ) : (
                   filteredChangeList.map((item) => (
                     <button
@@ -1070,53 +1036,52 @@ export function DiffViewModal({
                       type="button"
                       onClick={() => {
                         setActiveChangeId(item.id);
-                        scrollToTarget(item.scrollTargetId);
+                        scrollToTarget(item.scrollTargetId, item.kind);
                       }}
+                      aria-label={`Jump to ${item.label} in the page`}
+                      title="Jump to section"
                       className={cn(
-                        "mb-1 flex w-full flex-col rounded-md border border-transparent px-3 py-2.5 text-left transition-colors",
-                        "hover:bg-white/[0.05]",
+                        "group mb-1 flex w-full flex-col gap-0.5 rounded-md border px-2.5 py-2 text-left outline-none transition-colors",
+                        "border-[var(--ol-border)] bg-transparent hover:border-[var(--ol-link-strong)]/60 hover:bg-[var(--ol-text)]/[0.04]",
+                        "focus-visible:ring-2 focus-visible:ring-[var(--ol-link-strong)]",
                         activeChangeId === item.id &&
-                          "border-[#4a7c2f]/55 bg-[#1a2614]/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
+                          cn(activeCardAccent(item.kind), "shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"),
                       )}
                     >
-                      <div className="mb-1 flex items-center gap-2">
-                        <span className={badgeClass(item.kind)}>
-                          {item.kind === "added" && "Added"}
-                          {item.kind === "edited" && "Edited"}
-                          {item.kind === "removed" && "Removed"}
-                        </span>
-          </div>
-                      <span className="text-[12px] leading-snug text-white/70">{item.label}</span>
-                      <span className="mt-1 text-[11px] text-white/30">{item.meta}</span>
+                      <span className={cn(badgeClass(item.kind), "self-start")}>
+                        {item.kind === "added" && "Added"}
+                        {item.kind === "edited" && "Edited"}
+                        {item.kind === "removed" && "Removed"}
+                      </span>
+                      <span className="text-[12.5px] font-medium leading-snug text-[var(--ol-text)]/85">{item.label}</span>
+                      <span className="truncate text-[11px] leading-snug text-[var(--ol-text-muted)]" title={item.meta}>
+                        {item.meta}
+                      </span>
+                      <span
+                        className={cn(
+                          "mt-0.5 flex items-center gap-1 text-[11px] font-medium transition-colors",
+                          "text-[var(--ol-text-muted)] group-hover:text-[var(--ol-link)] group-focus-visible:text-[var(--ol-link)]",
+                          activeChangeId === item.id && "text-[var(--ol-link)]",
+                        )}
+                      >
+                        <CornerDownRight className="size-3 shrink-0" aria-hidden />
+                        Jump to section
+                      </span>
                     </button>
                   ))
                 )}
             </div>
             </ScrollArea>
-            <div className="mt-auto flex gap-3 border-t border-[#404040] px-4 py-3">
-              <div className="flex items-center gap-1.5 text-[11px] text-[#A3A3A3]">
-                <span className="size-2 rounded-full bg-[#97c459]" />
-                Added
-              </div>
-              <div className="flex items-center gap-1.5 text-[11px] text-[#A3A3A3]">
-                <span className="size-2 rounded-full bg-[#ef9f27]" />
-                Edited
-              </div>
-              <div className="flex items-center gap-1.5 text-[11px] text-[#A3A3A3]">
-                <span className="size-2 rounded-full bg-[#f09595]" />
-                Removed
-              </div>
-            </div>
           </aside>
 
           {/* Center */}
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <header className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 border-b border-[#404040] bg-[#262626] px-4 py-2.5">
+            <header className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 border-b border-[var(--ol-border)] bg-[var(--ol-card-bg)] px-7 py-2.5">
               <div className="flex min-w-0 flex-wrap items-center gap-0 text-[14px] leading-6">
                 {breadcrumbTrail.map((crumb, idx) => (
                   <span key={idx} className="flex min-w-0 items-center">
                     {idx > 0 && (
-                      <span className="px-2 text-[#BAB8BF]" aria-hidden>
+                      <span className="px-2 text-[var(--ol-text-muted)]" aria-hidden>
                         <ChevronRight className="size-3 shrink-0 opacity-80" />
                       </span>
                     )}
@@ -1137,7 +1102,7 @@ export function DiffViewModal({
                     <button type="button" className={navButtonClass} onClick={goToPreviousPage} disabled={isFirstPage} aria-label="Previous page">
                       <ChevronLeft className="size-4" />
                     </button>
-                    <span className="min-w-[2.5rem] text-center text-[13px] tabular-nums text-white/60">
+                    <span className="min-w-[2.5rem] text-center text-[13px] tabular-nums text-[var(--ol-text)]/60">
                       {currentPageIndex + 1}/{totalPages}
                     </span>
                     <button type="button" className={navButtonClass} onClick={goToNextPage} disabled={isLastPage} aria-label="Next page">
@@ -1146,31 +1111,29 @@ export function DiffViewModal({
                   </span>
                 ) : null}
               </div>
-              <div className="flex justify-end">
-                <div className="inline-flex rounded-md bg-white/[0.06] p-0.5" role="group" aria-label="View mode: full page or changes only">
-                  <button
-                    type="button"
-                    onClick={() => setViewMode("full")}
-                    className={cn(
-                      "rounded px-2.5 py-1 text-[11px] font-medium transition-colors",
-                      viewMode === "full" ? "bg-white/10 text-white/90" : "text-white/45 hover:text-white/70",
-                    )}
-                  >
-                    Full page
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setViewMode("diff")}
-                    className={cn(
-                      "rounded px-2 py-1 text-[10px] font-medium leading-tight transition-colors sm:text-[11px]",
-                      viewMode === "diff" ? "bg-white/10 text-white/90" : "text-white/45 hover:text-white/70",
-                    )}
-                  >
-                    View changes only
-                  </button>
-                </div>
-              </div>
+              {/* Empty third grid cell keeps the page navigation centered. */}
+              <div aria-hidden />
             </header>
+
+            <div
+              role="note"
+              aria-label="Preview only"
+              className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b-2 border-[var(--ol-link-strong)] bg-[var(--ol-card-bg)] px-7 py-2.5"
+            >
+              <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-[var(--ol-accent-blue-bg)] px-2.5 py-1 text-[13px] font-medium text-[var(--ol-link)] ring-1 ring-[var(--ol-link-strong)]/40">
+                  <Eye className="size-3.5 shrink-0" aria-hidden />
+                  Preview only
+                </span>
+                <span className="min-w-0 text-[12px] leading-snug text-[var(--ol-text-muted)]">
+                  {previewNote}
+                </span>
+              </div>
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-[var(--ol-border)] bg-[var(--ol-input-bg)] px-2.5 py-1 text-[12px] font-medium text-[var(--ol-text-muted)]">
+                <Lock className="size-3.5 shrink-0" aria-hidden />
+                Read-only
+              </span>
+            </div>
 
             <div ref={centerScrollRef} className={cn("min-h-0 flex-1 overflow-y-auto px-7 pb-12 pt-1", torus.canvas)}>
               <div className="mx-auto w-full max-w-[1536px] font-[family-name:var(--font-family-open)]">
@@ -1178,27 +1141,17 @@ export function DiffViewModal({
                   <article className="flex flex-col gap-4">
                     <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2">
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <span className="shrink-0 rounded bg-[#525252] px-3 py-2 text-center text-[12.8px] font-semibold leading-[12.8px] text-white">
-                          Practice
-                        </span>
-                        <h1 className="min-w-0 text-2xl font-normal leading-9 text-white">{breadcrumbTitle}</h1>
-                        <span className="cursor-default rounded-sm px-2 py-1 text-[14px] leading-5 text-[#3B76D3]">Edit Title</span>
+                        <h1 className="min-w-0 text-3xl font-semibold leading-tight text-[var(--ol-text)]">{breadcrumbTitle}</h1>
                       </div>
-                      <button
-                        type="button"
-                        className="flex shrink-0 items-center gap-2 rounded-sm bg-[#3B76D3] px-4 py-2 text-[14px] font-normal leading-5 text-white"
-                      >
-                        Preview
-                      </button>
                     </div>
 
                     {shouldShowLearningObjectives ? (
                       <div
                         id="diff-lo-section"
-                        className="rounded-md border border-[#404040] bg-[#3E3F44] px-6 py-4 shadow-[0_0_0_1px_#404040]"
+                        className="rounded-md border border-[var(--ol-border)] bg-[var(--ol-panel)] px-6 py-4 shadow-[0_0_0_1px_var(--ol-border)]"
                       >
-                        <h2 className="text-lg font-normal leading-[27px] text-white">Learning Objectives</h2>
-                        <div className="mt-1 rounded border border-[#404040] bg-[#262626] p-1.5">
+                        <h2 className="text-lg font-normal leading-[27px] text-[var(--ol-text)]">Learning Objectives</h2>
+                        <div className="mt-1 rounded border border-[var(--ol-border)] bg-[var(--ol-card-bg)] p-1.5">
                           <div className="flex flex-wrap gap-2">
                             {selectedPage.learningObjectives.map((lo, idx) => {
                               const k = loStatusToKind(lo.status);
@@ -1211,31 +1164,33 @@ export function DiffViewModal({
                                   key={idx}
                                   id={`diff-lo-${idx}`}
                                   className={cn(
-                                    "relative max-w-full rounded px-2 py-1 pl-2 pr-8 text-[16px] font-medium leading-4 text-white",
-                                    k === "added" && "ring-2 ring-[#4a7c2f] ring-offset-1 ring-offset-[#262626]",
-                                    !k && "bg-[#525252]",
-                                    k === "added" && "bg-[#525252]",
-                                    k === "removed" && "bg-[#3f2a2a] line-through opacity-80",
-                                    k === "edited" && "bg-[#5a4a2a]",
+                                    "relative max-w-full rounded px-2 py-1 pl-2 pr-8 text-[16px] font-medium leading-4 text-[var(--ol-text)]",
+                                    k === "added" && "ring-2 ring-[var(--ol-diff-added)] ring-offset-1 ring-offset-[var(--ol-card-bg)]",
+                                    k === "edited" && "ring-2 ring-[var(--ol-diff-edited)]/55 ring-offset-1 ring-offset-[var(--ol-card-bg)]",
+                                    k === "removed" && "ring-2 ring-[var(--ol-diff-removed)]/55 ring-offset-1 ring-offset-[var(--ol-card-bg)]",
+                                    !k && "bg-[var(--ol-panel)]",
+                                    k === "added" && "bg-[var(--ol-panel)]",
+                                    k === "removed" && "bg-[var(--ol-diff-removed-bg)] line-through opacity-80",
+                                    k === "edited" && "bg-[var(--ol-diff-edited-bg)]",
                                   )}
                                 >
                                   <span className="block pr-6">{lo.text}</span>
                                   <span
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[16px] leading-none text-white/90"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[16px] leading-none text-[var(--ol-text)]/90"
                                     aria-hidden
                                   >
                                     ×
                                   </span>
                                   {k === "added" ? (
-                                    <span className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-[#b7dc7a]">
+                                    <span className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-[var(--ol-action-added)]">
                                       Added
                                     </span>
                                   ) : k === "edited" ? (
-                                    <span className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-[#f0c080]">
+                                    <span className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-[var(--ol-action-edited)]">
                                       Edited
                                     </span>
                                   ) : k === "removed" ? (
-                                    <span className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-[#f09595]">
+                                    <span className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-[var(--ol-action-removed)]">
                                       Removed
                                     </span>
                                   ) : null}
@@ -1249,35 +1204,37 @@ export function DiffViewModal({
 
                     {isLecturePreview ? (
                       viewMode === "full" ? (
-                        <div className="mb-6 rounded-lg border border-[#404040] bg-[#2A2B2E] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
+                        <div className="mb-6 rounded-lg border border-[var(--ol-border)] bg-[var(--ol-input-bg)] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
                           {selectedPage.previewVariant === "lecture-text" && textKind ? (
                             <DiffCurriculumFullPageLayout
                               pageTitle={breadcrumbTitle}
+                              hideTitle
                               introductionSlot={renderCurriculumInlineTextIntro("full")}
                             />
                           ) : selectedPage.previewVariant === "lecture-image" && selectedPage.heroImageAfterSrc ? (
                             <DiffCurriculumFullPageLayout
                               pageTitle={breadcrumbTitle}
+                              hideTitle
                               introductionSlot={defaultCurriculumIntro}
                               mediaSlot={
                                 <div className="w-full max-w-[800px] space-y-2">
-                                  <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-[#A3A3A3]">
+                                  <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-[var(--ol-text-muted)]">
                                     Hero image
                                   </p>
                                   <div className="grid gap-3 md:grid-cols-2">
-                                    <div className="rounded-lg border border-[#525252] bg-[#1a1a1a]/80 p-3">
-                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-[#A3A3A3]">Previous</p>
-                                      <p className="mt-1 text-xs text-[#BAB8BF]">No hero (placeholder)</p>
-                                      <div className="mt-3 h-48 rounded-md bg-[#0f0f0f] ring-1 ring-[#404040]" aria-hidden />
+                                    <div className="rounded-lg border border-[var(--ol-border)] bg-[var(--ol-card-bg)]/80 p-3">
+                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--ol-text-muted)]">Previous</p>
+                                      <p className="mt-1 text-xs text-[var(--ol-text-muted)]">No hero (placeholder)</p>
+                                      <div className="mt-3 h-48 rounded-md bg-[var(--ol-page-bg)] ring-1 ring-[var(--ol-border)]" aria-hidden />
                                     </div>
                                     <div
                                       id="diff-hero-image"
-                                      className="relative rounded-lg border-2 border-[#4a7c2f] bg-[#1f2918] p-2 shadow-[0_0_0_1px_rgba(74,124,47,0.35)]"
+                                      className="relative rounded-lg border-2 border-[var(--ol-diff-added)] bg-[var(--ol-diff-added)]/18 p-2 shadow-[0_0_0_1px_rgba(33,131,88,0.35)]"
                                     >
-                                      <span className="absolute right-2 top-2 z-10 rounded bg-[#3d6b28] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[#e8ffc8]">
+                                      <span className="absolute right-2 top-2 z-10 rounded bg-[var(--ol-diff-added)] px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">
                                         New
                                       </span>
-                                      <div className="mb-1.5 rounded bg-[#1a2614]/90 px-2 py-1 text-[10px] font-semibold text-[#c8f0a4]">
+                                      <div className="mb-1.5 rounded bg-[var(--ol-diff-added)]/18 px-2 py-1 text-[10px] font-semibold text-[var(--ol-action-added)]">
                                         Added — Hero image
                                       </div>
                                       <img
@@ -1287,12 +1244,12 @@ export function DiffViewModal({
                                       />
                                     </div>
                                   </div>
-                                  <p className="text-center text-base text-[#F5F5F5]/40">Caption (optional)</p>
+                                  <p className="text-center text-base text-[var(--ol-text)]/40">Caption (optional)</p>
                                 </div>
                               }
                             />
                           ) : (
-                            <DiffCurriculumStaticContent pageTitle={breadcrumbTitle} />
+                            <DiffCurriculumStaticContent pageTitle={breadcrumbTitle} hideTitle />
                           )}
                         </div>
                       ) : (
@@ -1302,9 +1259,9 @@ export function DiffViewModal({
                           ) : selectedPage.previewVariant === "lecture-image" && selectedPage.heroImageAfterSrc && (filter === "all" || filter === "added") ? (
                             <div
                               id="diff-hero-image"
-                              className="rounded-lg border-2 border-[#4a7c2f] bg-[#2A2B2E] p-3 shadow-[0_0_0_1px_rgba(74,124,47,0.35)]"
+                              className="rounded-lg border-2 border-[var(--ol-diff-added)] bg-[var(--ol-input-bg)] p-3 shadow-[0_0_0_1px_rgba(74,124,47,0.35)]"
                             >
-                              <div className="mb-2 rounded-md bg-[#1a2614] px-3 py-2 text-[11px] font-semibold text-[#c8f0a4]">
+                              <div className="mb-2 rounded-md bg-[var(--ol-diff-added)]/18 px-3 py-2 text-[11px] font-semibold text-[var(--ol-action-added)]">
                                 Added — Hero image
                               </div>
                               <img
@@ -1314,19 +1271,19 @@ export function DiffViewModal({
                               />
                             </div>
                           ) : (
-                            <p className="py-12 text-center text-sm text-white/40">No changes match this filter.</p>
+                            <p className="py-12 text-center text-sm text-[var(--ol-text)]/40">No changes match this filter.</p>
                           )}
                         </>
                       )
                     ) : viewMode === "full" ? (
                       <>
-                        <div className="mb-6 rounded-lg border border-[#404040] bg-[#2A2B2E] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
-                          <DiffCurriculumStaticContent pageTitle={breadcrumbTitle} />
+                        <div className="mb-6 rounded-lg border border-[var(--ol-border)] bg-[var(--ol-input-bg)] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
+                          <DiffCurriculumStaticContent pageTitle={breadcrumbTitle} hideTitle />
                         </div>
 
-                        <section className="rounded-lg p-1 outline outline-1 outline-offset-[-1px] outline-[#AAAAAA]">
+                        <section className="rounded-lg p-1 outline outline-1 outline-offset-[-1px] outline-[var(--ol-border)]">
                           <LbdToolbarRow />
-                          <div className="overflow-hidden rounded-lg border border-[#404040] bg-[#2A2B2E] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
+                          <div className="overflow-hidden rounded-lg border border-[var(--ol-border)] bg-[var(--ol-input-bg)] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
                             <LearnByDoingStrip />
                             <div className="space-y-6 px-5 pb-8 pt-4 sm:px-8">
                               <ScenarioPreviewBlock />
@@ -1350,17 +1307,17 @@ export function DiffViewModal({
                                     id={`diff-q-${qIdx}`}
                                     className={cn(
                                       "space-y-2",
-                                      isChanged &&
-                                        "rounded-lg p-1 outline outline-2 outline-offset-[-1px] outline-[#4a7c2f] sm:p-1.5",
+                                      isChanged && "rounded-lg p-1 outline outline-2 outline-offset-[-1px] sm:p-1.5",
+                                      isChanged && kindOutlineClass(qKind),
                                     )}
                                   >
                                     {isChanged ? (
                                       <div
                                         className={cn(
                                           "flex flex-wrap items-center justify-between gap-2 rounded-md px-3 py-2 text-[11px] font-semibold",
-                                          qKind === "added" && "bg-[#1a2614] text-[#c8f0a4]",
-                                          qKind === "edited" && "bg-[#2a2418] text-[#f5d08a]",
-                                          qKind === "removed" && "bg-[#261414] text-[#f5c0c0]",
+                                          qKind === "added" && "bg-[var(--ol-diff-added)]/18 text-[var(--ol-action-added)]",
+                                          qKind === "edited" && "bg-[var(--ol-diff-edited-bg)] text-[var(--ol-action-edited)]",
+                                          qKind === "removed" && "bg-[var(--ol-diff-removed-bg)] text-[var(--ol-action-removed)]",
                                         )}
                                       >
                                         <span className="min-w-0 flex-1 truncate">{barLabel}</span>
@@ -1370,7 +1327,7 @@ export function DiffViewModal({
                                             setDetailLectureTextOpen(false);
                                             setDetailQuestionIndex(qIdx);
                                           }}
-                                          className="shrink-0 rounded border border-[#6aad4a]/60 bg-[#253920] px-2.5 py-1 text-[11px] font-medium text-[#d4f5bc] hover:bg-[#2f4a28]"
+                                          className={detailButtonClass(qKind)}
                                         >
                                           View detail
                                         </button>
@@ -1405,20 +1362,27 @@ export function DiffViewModal({
                                   : "";
 
                           const mcShell = (
-                            <div className="overflow-hidden rounded-lg border border-[#404040] bg-[#2A2B2E] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
+                            <div className="overflow-hidden rounded-lg border border-[var(--ol-border)] bg-[var(--ol-input-bg)] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
                               <LearnByDoingStrip />
                               <MultipleChoiceQuestionInner neu={neu} merged={merged} />
                             </div>
                           );
 
                           return (
-                            <section key={qIdx} id={`diff-q-${qIdx}`} className="rounded-lg p-1 outline outline-2 outline-offset-[-2px] outline-[#4a7c2f]">
+                            <section
+                              key={qIdx}
+                              id={`diff-q-${qIdx}`}
+                              className={cn(
+                                "rounded-lg p-1 outline outline-2 outline-offset-[-2px]",
+                                kindOutlineClass(qKind),
+                              )}
+                            >
                               <div
                                 className={cn(
                                   "mb-2 flex flex-wrap items-center justify-between gap-2 rounded-t-md px-3 py-2 text-[11px] font-semibold",
-                                  qKind === "added" && "bg-[#1a2614] text-[#c8f0a4]",
-                                  qKind === "edited" && "bg-[#2a2418] text-[#f5d08a]",
-                                  qKind === "removed" && "bg-[#261414] text-[#f5c0c0]",
+                                  qKind === "added" && "bg-[var(--ol-diff-added)]/18 text-[var(--ol-action-added)]",
+                                  qKind === "edited" && "bg-[var(--ol-diff-edited-bg)] text-[var(--ol-action-edited)]",
+                                  qKind === "removed" && "bg-[var(--ol-diff-removed-bg)] text-[var(--ol-action-removed)]",
                                 )}
                               >
                                 <span className="min-w-0 flex-1 truncate">{barLabel}</span>
@@ -1428,7 +1392,7 @@ export function DiffViewModal({
                                             setDetailLectureTextOpen(false);
                                             setDetailQuestionIndex(qIdx);
                                           }}
-                                  className="shrink-0 rounded border border-[#6aad4a]/60 bg-[#253920] px-2.5 py-1 text-[11px] font-medium text-[#d4f5bc] hover:bg-[#2f4a28]"
+                                  className={detailButtonClass(qKind)}
                                 >
                                   View detail
                                 </button>
@@ -1442,35 +1406,35 @@ export function DiffViewModal({
 
                     {viewMode === "full" ? (
                       <>
-                    <div className="flex flex-col gap-8 rounded-lg border border-[#173667] bg-[#2A2B2E] p-6 shadow-[0_0_0_1px_#173667]">
+                    <div className="flex flex-col gap-8 rounded-lg border border-[var(--ol-accent-blue-bg)] bg-[var(--ol-input-bg)] p-6 shadow-[0_0_0_1px_var(--ol-accent-blue-bg)]">
                       <div className="flex flex-wrap items-center justify-between gap-4">
                         <div className="flex flex-wrap items-center gap-2">
-                          <h2 className="text-2xl font-normal leading-6 text-white">Notes</h2>
-                          <span className="rounded bg-[#173667] px-2 py-1 text-[14px] font-bold leading-[14px] text-white">
+                          <h2 className="text-xl font-normal leading-7 text-[var(--ol-text)]">Notes</h2>
+                          <span className="rounded bg-[var(--ol-accent-blue-bg)] px-2 py-1 text-[14px] font-bold leading-[14px] text-[var(--ol-text)]">
                             Enabled
                           </span>
                         </div>
                         <div className="flex flex-wrap gap-1">
                           <button
                             type="button"
-                            className="rounded-sm border border-[#0165D9] bg-white px-3 py-2 text-[14px] text-[#0165D9]"
+                            className="rounded-sm border border-[#0062F2] bg-white px-3 py-2 text-[14px] text-[#0062F2]"
                           >
                             Archive
                           </button>
-                          <button type="button" className="rounded-sm bg-[#262626] px-3 py-2 text-[14px] text-[#0165D9]">
+                          <button type="button" className="rounded-sm bg-[var(--ol-card-bg)] px-3 py-2 text-[14px] text-[var(--ol-link-strong)]">
                             Disable
                           </button>
                         </div>
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="flex cursor-default items-start gap-3 text-[16px] leading-6 text-white">
-                          <span className="mt-0.5 inline-flex size-[18px] shrink-0 items-center justify-center bg-[#0165D9]">
+                        <label className="flex cursor-default items-start gap-3 text-[16px] leading-6 text-[var(--ol-text)]">
+                          <span className="mt-0.5 inline-flex size-[18px] shrink-0 items-center justify-center bg-[#0062F2]">
                             <span className="size-2 bg-white" />
                           </span>
                           Allow posts to be visible without approval
                         </label>
-                        <label className="flex cursor-default items-start gap-3 text-[16px] leading-6 text-white">
-                          <span className="mt-0.5 inline-flex size-[18px] shrink-0 items-center justify-center bg-[#0165D9]">
+                        <label className="flex cursor-default items-start gap-3 text-[16px] leading-6 text-[var(--ol-text)]">
+                          <span className="mt-0.5 inline-flex size-[18px] shrink-0 items-center justify-center bg-[#0062F2]">
                             <span className="size-2 bg-white" />
                           </span>
                           Allow anonymous posts
@@ -1480,24 +1444,24 @@ export function DiffViewModal({
 
                     {totalPages > 1 ? (
                       <div className="flex flex-wrap items-stretch justify-center gap-4 pt-2 sm:justify-between">
-                        <div className="w-full max-w-[400px] flex-1 rounded-sm border border-[#E5E5E5] bg-[#262626] p-4 shadow-[1px_1px_6px_-2px_rgba(0,0,0,0.25)]">
+                        <div className="w-full max-w-[400px] flex-1 rounded-sm border border-[var(--ol-border)] bg-[var(--ol-card-bg)] p-4 shadow-[1px_1px_6px_-2px_rgba(0,0,0,0.25)]">
                           <button
                             type="button"
                             disabled={isFirstPage}
                             onClick={goToPreviousPage}
                             className="flex w-full items-center gap-4 text-left disabled:opacity-40"
                           >
-                            <ChevronLeft className="size-6 shrink-0 text-[#2B8BFE]" aria-hidden />
+                            <ChevronLeft className="size-6 shrink-0 text-[var(--ol-link-strong)]" aria-hidden />
                             <div className="min-w-0 flex-1">
-                              <div className="text-right text-[12.8px] leading-[19.2px] text-[#A3A3A3]">Previous</div>
-                              <div className="text-right text-base leading-6 text-[#2B8BFE]">
+                              <div className="text-right text-[12.8px] leading-[19.2px] text-[var(--ol-text-muted)]">Previous</div>
+                              <div className="text-right text-base leading-6 text-[var(--ol-link-strong)]">
                                 {pages[Math.max(0, currentPageIndex - 1)]?.title ?? "—"}
                               </div>
                             </div>
                           </button>
                         </div>
                         <div className="hidden w-40 shrink-0 sm:block" aria-hidden />
-                        <div className="w-full max-w-[400px] flex-1 rounded-sm border border-[#E5E5E5] bg-[#262626] p-4 shadow-[1px_1px_6px_-2px_rgba(0,0,0,0.25)]">
+                        <div className="w-full max-w-[400px] flex-1 rounded-sm border border-[var(--ol-border)] bg-[var(--ol-card-bg)] p-4 shadow-[1px_1px_6px_-2px_rgba(0,0,0,0.25)]">
                           <button
                             type="button"
                             disabled={isLastPage}
@@ -1505,34 +1469,34 @@ export function DiffViewModal({
                             className="flex w-full items-center gap-4 text-left disabled:opacity-40"
                           >
                             <div className="min-w-0 flex-1">
-                              <div className="text-[12.8px] leading-[19.2px] text-[#A3A3A3]">Next</div>
-                              <div className="text-base leading-6 text-[#2B8BFE]">
+                              <div className="text-[12.8px] leading-[19.2px] text-[var(--ol-text-muted)]">Next</div>
+                              <div className="text-base leading-6 text-[var(--ol-link-strong)]">
                                 {pages[Math.min(totalPages - 1, currentPageIndex + 1)]?.title ?? "—"}
                               </div>
                             </div>
-                            <ChevronRight className="size-6 shrink-0 text-[#2B8BFE]" aria-hidden />
+                            <ChevronRight className="size-6 shrink-0 text-[var(--ol-link-strong)]" aria-hidden />
                           </button>
                         </div>
                       </div>
                     ) : null}
 
-                    <p className="text-[12.8px] leading-[19.2px] text-[#99CCFF]">Cookie Preferences</p>
+                    <p className="text-[12.8px] leading-[19.2px] text-[var(--ol-link)]">Cookie Preferences</p>
                       </>
                     ) : null}
                   </article>
                 ) : hasTextDiff ? (
                   !textKind || filter === "all" || filter === textKind ? (
-                    <div className="overflow-hidden rounded-lg border border-[#404040] bg-[#2A2B2E] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
+                    <div className="overflow-hidden rounded-lg border border-[var(--ol-border)] bg-[var(--ol-input-bg)] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)]">
                       <DiffCurriculumFullPageLayout
                         pageTitle={breadcrumbTitle}
                         introductionSlot={textKind ? renderCurriculumInlineTextIntro(viewMode) : defaultCurriculumIntro}
                       />
                     </div>
                   ) : (
-                    <p className="py-12 text-center text-sm text-white/40">No changes match this filter.</p>
+                    <p className="py-12 text-center text-sm text-[var(--ol-text)]/40">No changes match this filter.</p>
                   )
                 ) : (
-                  <p className="text-center text-sm text-white/40">No content to compare for this page.</p>
+                  <p className="text-center text-sm text-[var(--ol-text)]/40">No content to compare for this page.</p>
                 )}
               </div>
             </div>
@@ -1540,12 +1504,12 @@ export function DiffViewModal({
             {totalPages > 1 ? (
               <nav
                 aria-label="Compare pages"
-                className="flex items-center justify-center gap-4 border-t border-[#404040] bg-[#262626] px-4 py-2.5 lg:hidden"
+                className="flex items-center justify-center gap-4 border-t border-[var(--ol-border)] bg-[var(--ol-card-bg)] px-4 py-2.5 lg:hidden"
               >
                 <button type="button" className={navButtonClass} onClick={goToPreviousPage} disabled={isFirstPage} aria-label="Previous page">
                   <ChevronLeft className="size-4" />
                 </button>
-                <span className="text-sm tabular-nums text-white/60">
+                <span className="text-sm tabular-nums text-[var(--ol-text)]/60">
                   {currentPageIndex + 1} / {totalPages}
                 </span>
                 <button type="button" className={navButtonClass} onClick={goToNextPage} disabled={isLastPage} aria-label="Next page">
@@ -1556,9 +1520,9 @@ export function DiffViewModal({
           </div>
 
           {/* Right */}
-          <aside className="flex w-full shrink-0 flex-col border-t border-[#404040] bg-[#262626] lg:w-[220px] lg:border-l lg:border-t-0">
+          <aside className="flex w-full shrink-0 flex-col border-t border-[var(--ol-border)] bg-[var(--ol-card-bg)] lg:w-[220px] lg:border-l lg:border-t-0">
             {showRightActions ? (
-              <div className="space-y-2 border-b border-[#404040] px-3.5 py-3.5">
+              <div className="space-y-2 border-b border-[var(--ol-border)] px-3.5 py-3.5">
                 {onPublishChanges ? (
                   <Button type="button" className={cn("h-9 w-full rounded-md border-0 text-[13px] font-medium", torus.publish)} onClick={onPublishChanges}>
                     Publish changes
@@ -1568,7 +1532,7 @@ export function DiffViewModal({
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-9 w-full rounded-md border-white/15 bg-transparent text-[12px] text-white/50 hover:bg-white/5"
+                    className="h-9 w-full rounded-md border-[var(--ol-border)] bg-transparent text-[12px] text-[var(--ol-text-muted)] hover:bg-[var(--ol-text)]/[0.04]"
                     onClick={onDiscardAll}
                   >
                     Discard all
@@ -1578,9 +1542,9 @@ export function DiffViewModal({
             ) : null}
             <div className="flex min-h-0 flex-1 flex-col px-3.5 py-3">
               <div className="mb-2.5 flex min-h-[28px] items-center justify-between gap-2">
-                <p className="text-[11px] font-medium uppercase tracking-wider text-white/35">Summary</p>
+                <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--ol-text-muted)]">Summary</p>
                 <DialogClose
-                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-2 focus-visible:ring-offset-[#262626]"
+                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-[var(--ol-text)]/85 transition-colors hover:bg-white/10 hover:text-[var(--ol-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ol-card-bg)]"
                   aria-label="Close"
                 >
                   <X className="size-4" strokeWidth={2} />
@@ -1588,21 +1552,30 @@ export function DiffViewModal({
               </div>
               <div className="space-y-0 border-b border-white/[0.05] pb-1">
                 <div className="flex items-center justify-between py-1.5 text-[12px]">
-                  <span className="text-white/45">Added</span>
+                  <span className="flex items-center gap-1.5 text-[var(--ol-text-muted)]">
+                    <CirclePlus className={cn("size-3.5 shrink-0", torus.added)} aria-hidden />
+                    Added
+                  </span>
                   <span className={cn("font-medium tabular-nums", torus.added)}>{stats.added}</span>
                 </div>
                 <div className="flex items-center justify-between py-1.5 text-[12px]">
-                  <span className="text-white/45">Edited</span>
+                  <span className="flex items-center gap-1.5 text-[var(--ol-text-muted)]">
+                    <Pencil className={cn("size-3.5 shrink-0", torus.edited)} aria-hidden />
+                    Edited
+                  </span>
                   <span className={cn("font-medium tabular-nums", torus.edited)}>{stats.edited}</span>
                 </div>
                 <div className="flex items-center justify-between py-1.5 text-[12px]">
-                  <span className="text-white/45">Removed</span>
+                  <span className="flex items-center gap-1.5 text-[var(--ol-text-muted)]">
+                    <CircleMinus className={cn("size-3.5 shrink-0", torus.removed)} aria-hidden />
+                    Removed
+                  </span>
                   <span className={cn("font-medium tabular-nums", torus.removed)}>{stats.removed}</span>
                 </div>
               </div>
             </div>
-            <div className="mt-auto border-t border-[#404040] px-3.5 py-3">
-              <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-white/35">Filter by</p>
+            <div className="mt-auto border-t border-[var(--ol-border)] px-3.5 py-3">
+              <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-[var(--ol-text-muted)]">Filter by</p>
               <div className="flex flex-wrap gap-1.5">
                 {(["all", "added", "edited", "removed"] as const).map((f) => (
                   <button
@@ -1611,19 +1584,19 @@ export function DiffViewModal({
                     onClick={() => setFilter(f)}
                     className={cn(
                       "rounded px-2 py-1 text-[11px] transition-colors",
-                      "border border-white/12 text-white/50 hover:bg-white/[0.05]",
+                      "border border-[var(--ol-border)] text-[var(--ol-text-muted)] hover:bg-[var(--ol-text)]/[0.05]",
                       f === filter &&
                         f === "all" &&
-                        "border-white/30 bg-white/[0.14] font-medium text-white",
+                        "border-[var(--ol-border)] bg-[var(--ol-nav-active)] font-medium text-[var(--ol-text)]",
                       f === filter &&
                         f === "added" &&
-                        "border-[#4a7c2f]/65 bg-[#639922]/16 font-medium text-[#97c459]",
+                        "border-[var(--ol-diff-added)]/65 bg-[var(--ol-diff-added)]/16 font-medium text-[var(--ol-action-added)]",
                       f === filter &&
                         f === "edited" &&
-                        "border-[#c78a2a]/55 bg-[#8a6218]/28 font-medium text-[#f5d08a]",
+                        "border-[var(--ol-diff-edited)]/55 bg-[var(--ol-diff-edited)]/16 font-medium text-[var(--ol-action-edited)]",
                       f === filter &&
                         f === "removed" &&
-                        "border-[#c45a5a]/55 bg-[#6b2f2f]/40 font-medium text-[#f5c0c0]",
+                        "border-[var(--ol-diff-removed)]/55 bg-[var(--ol-diff-removed)]/16 font-medium text-[var(--ol-action-removed)]",
                     )}
                   >
                     {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}

@@ -2,45 +2,82 @@
 
 :root {
   --font-size: 16px;
-  --background: rgba(13, 12, 15, 1);
-  --foreground: rgba(238, 235, 245, 1);
-  --card: rgba(27, 25, 31, 1);
-  --card-foreground: rgba(238, 235, 245, 1);
-  --popover: rgba(13, 12, 15, 1);
-  --popover-foreground: rgba(238, 235, 245, 1);
+  /* Light mode (Figma: text-high #353740, nav-active #e6e9f2, accent-purple #f7def8) */
+  --background: rgba(243, 244, 248, 1); /* #F3F4F8 page bg */
+  --foreground: rgba(53, 55, 64, 1);
+  --card: rgba(255, 255, 255, 1);
+  --card-foreground: rgba(53, 55, 64, 1);
+  --popover: rgba(255, 255, 255, 1);
+  --popover-foreground: rgba(53, 55, 64, 1);
   --primary: rgba(0, 98, 242, 1);
   --primary-foreground: rgba(255, 255, 255, 1);
-  --secondary: rgba(43, 40, 46, 1);
-  --secondary-foreground: rgba(238, 235, 245, 1);
-  --muted: rgba(59, 55, 64, 1);
-  --muted-foreground: rgba(186, 184, 191, 1);
-  --accent: rgba(153, 204, 255, 1);
-  --accent-foreground: rgba(0, 0, 0, 1);
-  --destructive: rgba(51, 24, 26, 1);
-  --destructive-foreground: rgba(255, 135, 135, 1);
-  --border: rgba(59, 55, 64, 1);
-  --input: rgba(43, 40, 46, 1);
-  --input-background: rgba(43, 40, 46, 1);
+  --secondary: rgba(230, 233, 242, 1);
+  --secondary-foreground: rgba(53, 55, 64, 1);
+  --muted: rgba(238, 240, 244, 1);
+  --muted-foreground: rgba(69, 70, 76, 1);
+  --accent: rgba(0, 98, 242, 1);
+  --accent-foreground: rgba(255, 255, 255, 1);
+  --destructive: rgba(253, 232, 232, 1);
+  --destructive-foreground: rgba(200, 40, 40, 1);
+  --border: rgba(226, 228, 234, 1);
+  --input: rgba(255, 255, 255, 1);
+  --input-background: rgba(255, 255, 255, 1);
   --ring: rgba(0, 98, 242, 1);
-  --elevation-sm: 0px 2px 10px 0px rgba(0, 50, 99, 0.1);
+  --elevation-sm: 0px 2px 10px 0px rgba(0, 50, 99, 0.08);
   --chart-1: rgba(0, 98, 242, 1);
-  --chart-2: rgba(57, 229, 129, 1);
-  --chart-3: rgba(255, 144, 64, 1);
-  --chart-4: rgba(220, 109, 242, 1);
-  --chart-5: rgba(57, 211, 229, 1);
+  --chart-2: rgba(20, 150, 80, 1);
+  --chart-3: rgba(210, 110, 30, 1);
+  --chart-4: rgba(160, 60, 190, 1);
+  --chart-5: rgba(20, 160, 180, 1);
   --radius: 8px;
   --radius-button: 6px;
   --radius-card: 12px;
   --radius-large: 16px;
-  --sidebar: rgba(0, 0, 0, 1);
-  --sidebar-foreground: rgba(238, 235, 245, 1);
-  --sidebar-primary: rgba(43, 40, 46, 1);
-  --sidebar-primary-foreground: rgba(238, 235, 245, 1);
-  --sidebar-accent: rgba(153, 204, 255, 1);
-  --sidebar-accent-foreground: rgba(0, 0, 0, 1);
-  --sidebar-border: rgba(27, 25, 31, 1);
+  --sidebar: rgba(255, 255, 255, 1);
+  --sidebar-foreground: rgba(53, 55, 64, 1);
+  --sidebar-primary: rgba(230, 233, 242, 1);
+  --sidebar-primary-foreground: rgba(53, 55, 64, 1);
+  --sidebar-accent: rgba(0, 98, 242, 1);
+  --sidebar-accent-foreground: rgba(255, 255, 255, 1);
+  --sidebar-border: rgba(230, 233, 242, 1);
   --sidebar-ring: rgba(0, 98, 242, 1);
-  --sidebar-highlight: rgba(116, 49, 148, 1);
+  --sidebar-highlight: rgba(247, 222, 248, 1);
+  /* OLI publish-screen surface tokens (light values here, dark under .dark) */
+  --ol-page-bg: #f3f4f8; /* #F3F4F8 page bg */
+  --ol-text: #353740;
+  --ol-text-muted: #45464c;
+  --ol-text-subtle: #757682;
+  --ol-border: #ced1d9;
+  --ol-card-bg: #ffffff;
+  --ol-input-bg: #ffffff;
+  --ol-input-border: #ced1d9;
+  --ol-input-focus: #eef0f4;
+  --ol-table-header-bg: #ffffff; /* Table/table-top-row (light) */
+  --ol-table-header-text: #353740;
+  --ol-table-row-1: #f3f4f8; /* Table/table-row 1 (light) */
+  --ol-table-row-2: #e3e7eb; /* Table/table-row 2 (light) */
+  --ol-table-hover: rgba(0, 98, 242, 0.09);
+  --ol-nav-bg: #ffffff;
+  --ol-nav-active: #e6e9f2;
+  --ol-nav-purple: #f7def8;
+  --ol-nav-purple-text: #6b2b83;
+  --ol-nav-divider: #e6e9f2;
+  --ol-chip-bg: #e6e9f2;
+  --ol-chip-text: #353740;
+  --ol-panel: #eceef3; /* subtle section-panel fill (lighter than the border line) */
+  --ol-link: #1b67b2; /* Text/text-link (light) */
+  --ol-link-strong: #1b67b2;
+  --ol-accent-blue-bg: #dbeafe;
+  --ol-accent-blue-text: #1b67b2;
+  --ol-action-added: #1a7f4b;
+  --ol-action-removed: #c0392b;
+  --ol-action-edited: #b45309;
+  /* Diff highlight accents (solid bars/borders/rings) + panel fills (light) */
+  --ol-diff-added: #1a7f4b;
+  --ol-diff-removed: #c0392b;
+  --ol-diff-removed-bg: #fbe3e3;
+  --ol-diff-edited: #b45309;
+  --ol-diff-edited-bg: #fdecd8;
   --text-h1: 48px;
   --text-h2: 36px;
   --text-h3: 26px;
@@ -90,6 +127,41 @@
   --sidebar-border: rgba(27, 25, 31, 1);
   --sidebar-ring: rgba(0, 98, 242, 1);
   --sidebar-highlight: rgba(116, 49, 148, 1);
+  /* OLI publish-screen surface tokens (dark) */
+  --ol-page-bg: #0d0c0f;
+  --ol-text: #eeebf5;
+  --ol-text-muted: #bab8bf;
+  --ol-text-subtle: #757682;
+  --ol-border: #3b3740;
+  --ol-card-bg: #1b191f;
+  --ol-input-bg: #2b282e;
+  --ol-input-border: #2b282e;
+  --ol-input-focus: #3b3740;
+  --ol-table-header-bg: #000000;
+  --ol-table-header-text: #eeebf5;
+  --ol-table-row-1: #0d0c0f;
+  --ol-table-row-2: #201d21;
+  --ol-table-hover: rgba(47, 44, 51, 0.65);
+  --ol-nav-bg: #000000;
+  --ol-nav-active: #2b282e;
+  --ol-nav-purple: #463552;
+  --ol-nav-purple-text: #ffffff;
+  --ol-nav-divider: #0f0d0f;
+  --ol-chip-bg: #524d59;
+  --ol-chip-text: #ffffff;
+  --ol-panel: #3b3740; /* matches the former dark panel fill (unchanged in dark) */
+  --ol-link: #99ccff;
+  --ol-link-strong: #4ca6ff;
+  --ol-accent-blue-bg: #363b59;
+  --ol-accent-blue-text: #99ccff;
+  --ol-action-added: #39e581;
+  --ol-action-removed: #ff8787;
+  --ol-action-edited: #ffb387;
+  --ol-diff-added: #218358;
+  --ol-diff-removed: #ff4040;
+  --ol-diff-removed-bg: #33181a;
+  --ol-diff-edited: #ff9040;
+  --ol-diff-edited-bg: #4c3f39;
 }
 
 @theme inline {
@@ -217,4 +289,14 @@ input {
 
 html {
   font-size: var(--font-size);
+}
+
+/* App shell owns all scrolling internally (main + sidebar each scroll on their own).
+   Clamp the document to the viewport so nothing can scroll the window behind the
+   fixed 100vh shell (prevents the phantom empty space below the layout). */
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
 }

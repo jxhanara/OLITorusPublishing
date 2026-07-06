@@ -8,11 +8,11 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#0D0C0F]">
+    <div className="flex h-screen flex-col overflow-hidden bg-[var(--ol-page-bg)]">
       <AppTopBar />
       <div className="flex min-h-0 flex-1">
         <AppSidebar />
-        <main className="min-w-0 flex-1 overflow-y-auto bg-[#0D0C0F]">{children}</main>
+        <main className="relative min-w-0 flex-1 overflow-y-auto bg-[var(--ol-page-bg)]">{children}</main>
       </div>
     </div>
   );

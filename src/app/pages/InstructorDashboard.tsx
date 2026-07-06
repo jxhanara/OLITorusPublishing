@@ -2,18 +2,60 @@ import { useState } from "react";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { UpdateNotificationBanner } from "../components/UpdateNotificationBanner";
+import { DiffViewModal } from "../components/DiffViewModal";
+import { getDiffText, getDiffChanges } from "../components/PublishHistorySection";
 import { ChevronRight, BookOpen, Users, TrendingUp, Clock } from "lucide-react";
+
+/**
+ * Instructor-facing updates. Each maps to a published change id so "View Changes"
+ * can open the same full authoring diff (learning objectives, question-level edits,
+ * before/after text) that the Course Author sees on the Publish page.
+ */
+const instructorUpdates = [
+  {
+    changeId: "1",
+    page: "Introduction",
+    description: "Updated course overview description with modern web development focus",
+    author: "Sarah Chen",
+    modified: "March 23, 2:30 PM",
+    published: true,
+  },
+  {
+    changeId: "2",
+    page: "Module 1",
+    description: "Replaced hero image with updated branding assets",
+    author: "Michael Rodriguez",
+    modified: "March 23, 11:15 AM",
+    published: true,
+  },
+  {
+    changeId: "3a",
+    page: "Quiz Section",
+    description: "Reorganized question order for better learning progression",
+    author: "Emma Wilson",
+    modified: "March 22, 4:45 PM",
+    published: true,
+    older: true,
+  },
+] as const;
 
 export function InstructorDashboard() {
   const [showNotification, setShowNotification] = useState(true);
+  const [showDiffModal, setShowDiffModal] = useState(false);
+  const [selectedDiff, setSelectedDiff] = useState<{ changeId: string; page: string } | null>(null);
 
   const handleViewChanges = () => {
     setShowNotification(false);
     window.scrollTo({ top: document.getElementById("recent-updates")?.offsetTop, behavior: "smooth" });
   };
 
+  const handleViewDiff = (changeId: string, page: string) => {
+    setSelectedDiff({ changeId, page });
+    setShowDiffModal(true);
+  };
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-full bg-background">
       {/* Update Notification */}
       {showNotification && (
         <UpdateNotificationBanner
@@ -84,74 +126,40 @@ export function InstructorDashboard() {
             </div>
           </div>
           <div className="p-6 space-y-4">
-            {/* Update 1 */}
-            <div className="p-4 border border-border rounded-lg hover:bg-accent/50 transition-colors">
-              <div className="flex items-start justify-between">
-                <div className="space-y-1 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-foreground">Introduction</h3>
-                    <Badge className="bg-chart-2/20 text-chart-2">Published</Badge>
+            {instructorUpdates.map((update) => (
+              <div
+                key={update.changeId}
+                className={`p-4 border border-border rounded-lg hover:bg-accent/50 transition-colors ${
+                  update.older ? "opacity-60" : ""
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-foreground">{update.page}</h3>
+                      <Badge
+                        className={update.older ? "bg-muted text-muted-foreground" : "bg-chart-2/20 text-chart-2"}
+                      >
+                        Published
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{update.description}</p>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
+                      <span>Modified by {update.author}</span>
+                      <span>•</span>
+                      <span>{update.modified}</span>
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Updated course overview description with modern web development focus
-                  </p>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
-                    <span>Modified by Sarah Chen</span>
-                    <span>•</span>
-                    <span>March 23, 2:30 PM</span>
-                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleViewDiff(update.changeId, update.page)}
+                  >
+                    View Changes
+                  </Button>
                 </div>
-                <Button variant="outline" size="sm">
-                  View Changes
-                </Button>
               </div>
-            </div>
-
-            {/* Update 2 */}
-            <div className="p-4 border border-border rounded-lg hover:bg-accent/50 transition-colors">
-              <div className="flex items-start justify-between">
-                <div className="space-y-1 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-foreground">Module 1</h3>
-                    <Badge className="bg-chart-2/20 text-chart-2">Published</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Replaced hero image with updated branding assets
-                  </p>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
-                    <span>Modified by Michael Rodriguez</span>
-                    <span>•</span>
-                    <span>March 23, 11:15 AM</span>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm">
-                  View Changes
-                </Button>
-              </div>
-            </div>
-
-            {/* Update 3 - Older */}
-            <div className="p-4 border border-border rounded-lg hover:bg-accent/50 transition-colors opacity-60">
-              <div className="flex items-start justify-between">
-                <div className="space-y-1 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-foreground">Quiz Section</h3>
-                    <Badge className="bg-muted text-muted-foreground">Published</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Reorganized question order for better learning progression
-                  </p>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
-                    <span>Modified by Emma Wilson</span>
-                    <span>•</span>
-                    <span>March 22, 4:45 PM</span>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm">
-                  View Changes
-                </Button>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
 
@@ -192,6 +200,18 @@ export function InstructorDashboard() {
           </div>
         </div>
       </div>
+
+      {selectedDiff && (
+        <DiffViewModal
+          open={showDiffModal}
+          onOpenChange={setShowDiffModal}
+          pageName={selectedDiff.page}
+          previewNote="You're seeing published changes. Content can't be edited from this view."
+          currentVersion={getDiffText(selectedDiff.changeId).current}
+          newVersion={getDiffText(selectedDiff.changeId).new}
+          changes={getDiffChanges(selectedDiff.changeId)}
+        />
+      )}
     </div>
   );
 }

@@ -1,23 +1,34 @@
-import { useMemo, useState } from "react";
-import { Input } from "./ui/input";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Search, Eye, ChevronDown } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
+import { Search, Eye, ChevronDown, ChevronUp, CirclePlus, Pencil, CircleMinus } from "lucide-react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationFirst,
+  PaginationItem,
+  PaginationLink,
+  PaginationLast,
+  PaginationNext,
+  PaginationPrevious,
+} from "./ui/pagination";
 import type { ReactNode } from "react";
 import { DiffViewModal } from "./DiffViewModal";
 import { AuthorHoverCard } from "./AuthorHoverCard";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
 import { format } from "date-fns";
 import { cn } from "./ui/utils";
 
 interface Change {
   id: string;
   page: string;
-  type: "Text" | "Image" | "Layout" | "Delete" | "New" | "Multiple";
-  /** Shown on hover when type is Multiple — lowercase labels, e.g. text, image, delete */
-  multipleBreakdown?: string[];
+  /** Change action — matches the diff legend (Added / Edited / Removed). */
+  action: "Added" | "Edited" | "Removed";
+  /** Torus content/activity type, e.g. "Multiple choice", "Text", "Image", "Resource". */
+  contentType: string;
   description: string;
   author: {
     name: string;
@@ -28,15 +39,17 @@ interface Change {
   };
   timestamp: Date;
   status: "pending" | "published";
+  /** Publish version that shipped this change. Set on published rows only. */
+  version?: string;
 }
 
 const recentChanges: Change[] = [
   {
-    id: "3",
+    id: "3a",
     page: "Quiz Section",
-    type: "Multiple",
-    multipleBreakdown: ["text", "image", "delete"],
-    description: "Added new answer choices and updated learning objectives across 2 quizzes",
+    action: "Added",
+    contentType: "Multiple choice",
+    description: "Added two answer choices and a new learning objective to the gardening types quiz",
     author: {
       name: "Emma Wilson",
       initials: "EW",
@@ -47,9 +60,25 @@ const recentChanges: Change[] = [
     status: "pending",
   },
   {
+    id: "3b",
+    page: "Quiz Section",
+    action: "Added",
+    contentType: "Multiple choice",
+    description: "Added a fourth answer choice to the soil texture quiz",
+    author: {
+      name: "Emma Wilson",
+      initials: "EW",
+      email: "ewilson@university.edu",
+      role: "Instructional Designer",
+    },
+    timestamp: new Date(2026, 2, 23, 18, 18),
+    status: "pending",
+  },
+  {
     id: "1",
     page: "Introduction",
-    type: "Text",
+    action: "Edited",
+    contentType: "Text",
     description: "Updated course overview description with modern web development focus",
     author: {
       name: "Sarah Chen",
@@ -63,7 +92,8 @@ const recentChanges: Change[] = [
   {
     id: "2",
     page: "Module 1: Getting Started",
-    type: "Image",
+    action: "Added",
+    contentType: "Image",
     description: "Replaced hero image with updated branding",
     author: {
       name: "Michael Rodriguez",
@@ -77,7 +107,8 @@ const recentChanges: Change[] = [
   {
     id: "9",
     page: "Course Settings",
-    type: "Text",
+    action: "Edited",
+    contentType: "Text",
     description: "Updated enrollment messaging for self-paced sections",
     author: {
       name: "Nam, Hanara",
@@ -89,9 +120,70 @@ const recentChanges: Change[] = [
     status: "pending",
   },
   {
+    id: "10",
+    page: "Module 4: Watering",
+    action: "Added",
+    contentType: "Multiple choice",
+    description: "Added a new knowledge check on drip vs. overhead irrigation trade-offs",
+    author: {
+      name: "Emma Wilson",
+      initials: "EW",
+      email: "ewilson@university.edu",
+      role: "Instructional Designer",
+    },
+    timestamp: new Date(2026, 2, 23, 15, 40),
+    status: "pending",
+  },
+  {
+    id: "11",
+    page: "Glossary",
+    action: "Edited",
+    contentType: "Text",
+    description: "Clarified the definitions for loam, tilth, and mulch",
+    author: {
+      name: "Sarah Chen",
+      initials: "SC",
+      email: "schen@university.edu",
+      role: "Content Designer",
+    },
+    timestamp: new Date(2026, 2, 23, 13, 55),
+    status: "pending",
+  },
+  {
+    id: "12",
+    page: "Module 2: Basics",
+    action: "Removed",
+    contentType: "Image",
+    description: "Removed a duplicate diagram from the soil layers section",
+    author: {
+      name: "Michael Rodriguez",
+      initials: "MR",
+      email: "mrodriguez@university.edu",
+      role: "Visual Designer",
+    },
+    timestamp: new Date(2026, 2, 23, 12, 10),
+    status: "pending",
+  },
+  {
+    id: "13",
+    page: "Course Overview",
+    action: "Added",
+    contentType: "Page",
+    description: "Added a short welcome page outlining the weekly schedule",
+    author: {
+      name: "Nam, Hanara",
+      initials: "HN",
+      email: "hnam@university.edu",
+      role: "Course Author",
+    },
+    timestamp: new Date(2026, 2, 23, 10, 30),
+    status: "pending",
+  },
+  {
     id: "4",
     page: "Resources",
-    type: "Delete",
+    action: "Removed",
+    contentType: "Resource",
     description: "Removed outdated PDF attachment from 2025",
     author: {
       name: "Sarah Chen",
@@ -101,11 +193,13 @@ const recentChanges: Change[] = [
     },
     timestamp: new Date(2026, 2, 22, 9, 20),
     status: "published",
+    version: "v0.3.5",
   },
   {
     id: "5",
     page: "Module 3: Advanced Topics",
-    type: "New",
+    action: "Added",
+    contentType: "Page",
     description: "Created new module covering advanced gardening techniques",
     author: {
       name: "Emma Wilson",
@@ -115,11 +209,13 @@ const recentChanges: Change[] = [
     },
     timestamp: new Date(2026, 2, 21, 15, 10),
     status: "published",
+    version: "v0.3.4",
   },
   {
     id: "6",
     page: "Module 2: Basics",
-    type: "Layout",
+    action: "Edited",
+    contentType: "Page",
     description: "Reorganized section structure and updated navigation",
     author: {
       name: "Michael Rodriguez",
@@ -129,11 +225,13 @@ const recentChanges: Change[] = [
     },
     timestamp: new Date(2026, 2, 21, 10, 30),
     status: "published",
+    version: "v0.3.4",
   },
   {
     id: "7",
     page: "Assessment: Final Quiz",
-    type: "New",
+    action: "Added",
+    contentType: "Assessment",
     description: "Added comprehensive final assessment with 10 questions",
     author: {
       name: "Emma Wilson",
@@ -143,11 +241,13 @@ const recentChanges: Change[] = [
     },
     timestamp: new Date(2026, 2, 20, 13, 45),
     status: "published",
+    version: "v0.3.3",
   },
   {
     id: "8",
     page: "Course Syllabus",
-    type: "Text",
+    action: "Edited",
+    contentType: "Text",
     description: "Minor grammar and spelling corrections",
     author: {
       name: "Sarah Chen",
@@ -157,10 +257,11 @@ const recentChanges: Change[] = [
     },
     timestamp: new Date(2026, 2, 19, 9, 15),
     status: "published",
+    version: "v0.3.2",
   },
 ];
 
-function getDiffText(changeId: string) {
+export function getDiffText(changeId: string) {
   switch (changeId) {
     case "1":
       return {
@@ -298,7 +399,7 @@ Prerequisites: Basic computer skills`,
   }
 }
 
-function getDiffChanges(changeId: string) {
+export function getDiffChanges(changeId: string) {
   if (changeId === "4" || changeId === "6" || changeId === "8") {
     return undefined;
   }
@@ -366,7 +467,7 @@ function getDiffChanges(changeId: string) {
     ];
   }
 
-  if (changeId === "3") {
+  if (changeId === "3a") {
     return [
       {
         id: "quiz-1",
@@ -397,6 +498,11 @@ function getDiffChanges(changeId: string) {
           },
         ],
       },
+    ];
+  }
+
+  if (changeId === "3b") {
+    return [
       {
         id: "quiz-2",
         title: "Multiple Choice",
@@ -496,93 +602,114 @@ function SortableHeader({ children }: { children: ReactNode }) {
   return (
     <span className="ol-sort-chevron inline-flex items-end gap-1">
       {children}
-      <ChevronDown className="size-5 shrink-0 text-white" aria-hidden />
+      <ChevronDown className="size-5 shrink-0 text-[var(--ol-table-header-text)]" aria-hidden />
     </span>
   );
 }
 
+type SortDirection = "asc" | "desc" | null;
+
+/** Interactive sortable header (Author). Matches the chevron pattern; active direction shown in accent blue. */
+function SortableButtonHeader({
+  children,
+  direction,
+  onToggle,
+}: {
+  children: ReactNode;
+  direction: SortDirection;
+  onToggle: () => void;
+}) {
+  const label = direction === "asc" ? "ascending" : direction === "desc" ? "descending" : "not sorted";
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={`Sort by author, currently ${label}`}
+      className="ol-sort-chevron inline-flex items-end gap-1 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-[#4CA6FF]"
+    >
+      {children}
+      {direction === "asc" ? (
+        <ChevronUp className="size-5 shrink-0 text-[var(--ol-link-strong)]" aria-hidden />
+      ) : (
+        <ChevronDown
+          className={cn("size-5 shrink-0", direction === "desc" ? "text-[var(--ol-link-strong)]" : "text-[var(--ol-table-header-text)]")}
+          aria-hidden
+        />
+      )}
+    </button>
+  );
+}
+
 /**
- * Calm type chips: shared neutral surface + thin left accent for scan (not full rainbow fills).
- * — Default: slate accent (content edits: text, image, layout, new).
- * — Delete: soft rose accent (only strong semantic signal).
- * — Multiple: neutral-amber hint (composite; details on hover).
+ * Action accent for the type tag — left bar + tint match the diff legend (DS values):
+ * Added green (#39E581 / #218358), Edited orange (#FF9040 / #4C3F39), Removed red (#FF4040 / #33181A).
+ * Tag text stays neutral (#EEEBF5); color is carried by the bar + tint so the chip reads calm.
  */
-function getTypeAccentClasses(type: Change["type"]) {
-  switch (type) {
-    case "Delete":
-      return "border-l-[3px] border-l-rose-500/75 bg-rose-950/25 text-rose-100/95";
-    case "Multiple":
-      return "border-l-[3px] border-l-amber-500/50 bg-[#262626] text-[#e4e4e7]";
+function getActionAccentClasses(action: Change["action"]) {
+  switch (action) {
+    case "Added":
+      return "bg-[#218358]/18 text-[var(--ol-text)]";
+    case "Removed":
+      return "bg-[#FF6B6B]/15 text-[var(--ol-text)]";
+    case "Edited":
     default:
-      return "border-l-[3px] border-l-[#64748b]/85 bg-[#262626] text-[#e4e4e7]";
+      return "bg-[#FFA24C]/15 text-[var(--ol-text)]";
+  }
+}
+
+/** Leading action icon + its color — matches the diff "View changes" legend (CirclePlus / Pencil / CircleMinus). */
+const ACTION_ICON = { Added: CirclePlus, Edited: Pencil, Removed: CircleMinus } as const;
+
+function getActionIconColor(action: Change["action"]) {
+  switch (action) {
+    case "Added":
+      return "text-[var(--ol-action-added)]";
+    case "Removed":
+      return "text-[var(--ol-action-removed)]";
+    case "Edited":
+    default:
+      return "text-[var(--ol-action-edited)]";
   }
 }
 
 function getStatusColor(status: Change["status"]) {
   switch (status) {
     case "pending":
-      return "border border-[#404040] bg-[#F1C40F] text-white";
+      return "border border-[var(--ol-border)] bg-[var(--ol-input-bg)] text-[var(--ol-text)]";
     case "published":
-      return "border border-[#404040] bg-[#275CAF] text-white";
+      return "border border-[var(--ol-border)] bg-[var(--ol-accent-blue-bg)] text-[var(--ol-accent-blue-text)]";
     default:
-      return "border border-[#404040] bg-[#525252] text-white";
+      return "border border-[var(--ol-border)] bg-[var(--ol-chip-bg)] text-[var(--ol-text)]";
   }
 }
 
-/** Breakdown tags in hover: one quiet style so the popover stays readable */
-const breakdownTagClass =
-  "inline-flex items-center rounded border border-[#404040] bg-[#1f1f22] px-2 py-0.5 text-[11px] font-medium capitalize leading-tight text-[#d4d4d8]";
-
-/** Compact type pill — neutral chrome; left accent from getTypeAccentClasses */
+/** Compact status pill — neutral chrome */
 const typeBadgeClass =
-  "inline-flex items-center rounded-md border border-[#3f3f46] py-0.5 pl-2 pr-2 text-[13px] font-medium capitalize leading-tight shadow-none transition-colors";
+  "inline-flex items-center rounded-md border border-[var(--ol-border)] py-0.5 pl-2 pr-2 text-[13px] font-medium capitalize leading-tight shadow-none transition-colors";
+
+/** Type tag — "[icon] Action · Torus type"; action-tinted bg from getActionAccentClasses. No capitalize so "Multiple choice" keeps its casing. */
+const typeTagClass =
+  "inline-flex items-center rounded-md border border-[var(--ol-border)] py-0.5 pl-2 pr-2 text-[13px] font-medium leading-tight shadow-none transition-colors";
+
+/** Torus DS dropdown list (fill-input #2b282e, border-input-focused, radius-075, 8px padding). */
+const dsSelectContentClass = "rounded-md border-[var(--ol-border)] bg-[var(--ol-input-bg)] p-2";
+/** DS list item — text-low #bab8bf default; highlighted → fill-input-focused + white. Check sits at the right. */
+const dsSelectItemClass =
+  "gap-2 rounded-md py-2 pl-2 pr-8 text-sm text-[var(--ol-text-muted)] data-[highlighted]:bg-[var(--ol-chip-bg)] data-[highlighted]:text-[var(--ol-text)]";
 
 function ChangeTypeBadge({ change }: { change: Change }) {
-  const accent = getTypeAccentClasses(change.type);
-  const breakdown = change.multipleBreakdown?.filter(Boolean) ?? [];
-
-  if (change.type === "Multiple" && breakdown.length > 0) {
-    const summary = breakdown.join(", ");
-    return (
-      <HoverCard openDelay={180} closeDelay={80}>
-        <HoverCardTrigger asChild>
-          <button
-            type="button"
-            aria-label={`Multiple change types: ${summary}`}
-            className={cn(
-              typeBadgeClass,
-              accent,
-              "cursor-help outline-none ring-offset-0 hover:border-[#525252] hover:bg-[#2a2a2e] focus-visible:ring-2 focus-visible:ring-[#52525c] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0D0C0F]",
-            )}
-          >
-            {change.type}
-          </button>
-        </HoverCardTrigger>
-        <HoverCardContent
-          side="top"
-          align="start"
-          sideOffset={8}
-          className="w-auto min-w-[220px] max-w-[280px] border border-[#525252] bg-[#1E1E1E] p-3 text-[#D4D4D4] shadow-xl outline-none"
-        >
-          <p className="mb-2.5 text-[11px] font-bold uppercase tracking-wide text-[#B8B4BF]">
-            Included in this change
-          </p>
-          <ul className="flex flex-wrap gap-1.5" aria-label="Change type breakdown">
-            {breakdown.map((kind) => (
-              <li key={kind}>
-                <span className={breakdownTagClass}>{kind}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-3 border-t border-[#404040] pt-2.5 text-xs leading-relaxed text-[#BAB8BF]">
-            This entry bundles more than one kind of modification. Open View changes for the full comparison.
-          </p>
-        </HoverCardContent>
-      </HoverCard>
-    );
-  }
-
-  return <span className={cn(typeBadgeClass, accent)}>{change.type}</span>;
+  const accent = getActionAccentClasses(change.action);
+  const Icon = ACTION_ICON[change.action];
+  return (
+    <span className={cn(typeTagClass, accent)}>
+      <Icon className={cn("mr-1.5 size-3.5 shrink-0", getActionIconColor(change.action))} aria-hidden />
+      <span className="font-semibold">{change.action}</span>
+      <span className="px-1 opacity-50" aria-hidden>
+        ·
+      </span>
+      <span>{change.contentType}</span>
+    </span>
+  );
 }
 
 export function getDefaultIncludedPendingChangeIds(): string[] {
@@ -599,24 +726,69 @@ type PublishHistorySectionProps = {
   /** Pending change ids to include in the next publish (subset allowed). */
   includedPendingChangeIds: string[];
   onIncludedPendingChangeIdsChange: (ids: string[]) => void;
+  /**
+   * Pending change ids that have been published this session. They move from the
+   * Pending tab to Published (prototype only — resets on refresh since the mock data
+   * lives in module scope).
+   */
+  publishedPendingChangeIds?: string[];
 };
 
 export function PublishHistorySection({
   currentUserDisplayName = "Nam, Hanara",
   includedPendingChangeIds,
   onIncludedPendingChangeIdsChange,
+  publishedPendingChangeIds = [],
 }: PublishHistorySectionProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterPage, setFilterPage] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("pending");
+  const [authorSort, setAuthorSort] = useState<SortDirection>(null);
   const [showDiffModal, setShowDiffModal] = useState(false);
   const [selectedDiff, setSelectedDiff] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Author header cycles: none → asc → desc → none.
+  const toggleAuthorSort = () =>
+    setAuthorSort((prev) => (prev === null ? "asc" : prev === "asc" ? "desc" : null));
+
+  // Jump back to the most recent page (page 1) whenever the result set changes.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterPage, filterType, filterStatus, authorSort]);
+
+  // Session-only view of the data: pending changes published this session are
+  // promoted to "published" so the Pending tab can show its empty state. Resets
+  // on refresh because the underlying mock data lives in module scope.
+  const effectiveChanges = useMemo(() => {
+    if (publishedPendingChangeIds.length === 0) return recentChanges;
+    const publishedSet = new Set(publishedPendingChangeIds);
+    return recentChanges.map((c) =>
+      c.status === "pending" && publishedSet.has(c.id)
+        ? { ...c, status: "published" as const, version: c.version ?? "v0.3.6" }
+        : c,
+    );
+  }, [publishedPendingChangeIds]);
 
   const pendingIds = useMemo(
-    () => recentChanges.filter((c) => c.status === "pending").map((c) => c.id),
-    [],
+    () => effectiveChanges.filter((c) => c.status === "pending").map((c) => c.id),
+    [effectiveChanges],
   );
+
+  // Distinct authors per page, offered as the "To:" autocomplete in the draft-email
+  // modal (so an editor can email anyone else who has touched that page).
+  const authorsByPage = useMemo(() => {
+    const map = new Map<string, { name: string; email: string }[]>();
+    for (const change of effectiveChanges) {
+      const list = map.get(change.page) ?? [];
+      if (!list.some((a) => a.email === change.author.email)) {
+        list.push({ name: change.author.name, email: change.author.email });
+      }
+      map.set(change.page, list);
+    }
+    return map;
+  }, [effectiveChanges]);
 
   const includedSet = useMemo(() => new Set(includedPendingChangeIds), [includedPendingChangeIds]);
   const allPendingSelected = pendingIds.length > 0 && pendingIds.every((id) => includedSet.has(id));
@@ -640,55 +812,125 @@ export function PublishHistorySection({
     else setIncluded([...pendingIds]);
   };
 
-  const filteredChanges = recentChanges.filter((change) => {
+  const filteredChanges = effectiveChanges.filter((change) => {
     const matchesSearch =
       change.page.toLowerCase().includes(searchQuery.toLowerCase()) ||
       change.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       change.author.name.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesPage = filterPage === "all" || change.page === filterPage;
-    const matchesType = filterType === "all" || change.type.toLowerCase() === filterType.toLowerCase();
+    const matchesType = filterType === "all" || change.contentType === filterType;
     const matchesStatus = filterStatus === "all" || change.status === filterStatus;
 
     return matchesSearch && matchesPage && matchesType && matchesStatus;
   });
+
+  // Default order: most recent first, so page 1 is the newest edits. Author sort overrides when active.
+  const displayedChanges = authorSort
+    ? [...filteredChanges].sort((a, b) => {
+        const cmp = a.author.name.localeCompare(b.author.name, undefined, { sensitivity: "base" });
+        return authorSort === "asc" ? cmp : -cmp;
+      })
+    : [...filteredChanges].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+  // Pagination — 7 rows per page; page 1 is the most recent. Anything past the
+  // first 7 rolls onto the next page.
+  const PAGE_SIZE = 7;
+  const totalPages = Math.max(1, Math.ceil(displayedChanges.length / PAGE_SIZE));
+  const page = Math.min(currentPage, totalPages);
+  const pageStart = (page - 1) * PAGE_SIZE;
+  const pageChanges = displayedChanges.slice(pageStart, pageStart + PAGE_SIZE);
+  const rangeStart = displayedChanges.length === 0 ? 0 : pageStart + 1;
+  const rangeEnd = Math.min(pageStart + PAGE_SIZE, displayedChanges.length);
+
+  // Page items with ellipsis (DS pattern): first + last always shown, current ± 1,
+  // with "…" filling the gaps. Collapses to a plain list for small page counts.
+  const pageItems = useMemo<(number | "ellipsis")[]>(() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    const items: (number | "ellipsis")[] = [1];
+    const start = Math.max(2, page - 1);
+    const end = Math.min(totalPages - 1, page + 1);
+    if (start > 2) items.push("ellipsis");
+    for (let p = start; p <= end; p++) items.push(p);
+    if (end < totalPages - 1) items.push("ellipsis");
+    items.push(totalPages);
+    return items;
+  }, [page, totalPages]);
 
   const handleViewDiff = (changeId: string) => {
     setSelectedDiff(changeId);
     setShowDiffModal(true);
   };
 
-  const uniquePages = Array.from(new Set(recentChanges.map((c) => c.page)));
+  const uniquePages = Array.from(new Set(effectiveChanges.map((c) => c.page)));
+  const uniqueContentTypes = Array.from(new Set(effectiveChanges.map((c) => c.contentType)));
+  // Version only matters once something is published; hide the column when viewing only pending rows.
+  const showVersionColumn = filterStatus !== "pending";
+
+  // Empty-state copy keyed to the active status tab. Read out for screen readers via role="status".
+  const emptyState =
+    filterStatus === "pending"
+      ? {
+          title: "No pending changes",
+          body: "There are no changes waiting to be included in the next publish.",
+        }
+      : filterStatus === "published"
+        ? {
+            title: "No published changes yet",
+            body: "Published changes will appear here after this project is published.",
+          }
+        : {
+            title: "No changes found",
+            body: "Try adjusting your search or filters.",
+          };
+  const emptyStateColSpan = showVersionColumn ? 9 : 8;
+
+  // Per-status totals for the tab counts (independent of the search/page/type filters).
+  const statusCounts = {
+    pending: effectiveChanges.filter((c) => c.status === "pending").length,
+    published: effectiveChanges.filter((c) => c.status === "published").length,
+    all: effectiveChanges.length,
+  };
+  const statusTabs = [
+    { value: "pending", label: "Pending", count: statusCounts.pending },
+    { value: "published", label: "Published", count: statusCounts.published },
+    { value: "all", label: "All", count: statusCounts.all },
+  ] as const;
 
   return (
     <>
       <div className="space-y-4">
         <div>
-          <h3 className="mb-1 text-base font-normal text-white">Pending &amp; Recent Changes</h3>
-          <p className="text-sm font-normal text-[#BAB8BF]">
-            Review modifications before publishing. For pending rows, use <strong className="font-semibold text-[#D4D4D4]">Include</strong> to choose which changes go out with the next publish (for example, only your own).
+          <h3 className="mb-1 text-base font-normal text-[var(--ol-text)]">Publication Changes</h3>
+          <p className="text-sm font-normal text-[var(--ol-text-muted)]">
+            Review pending changes before publishing, or view previously published changes for reference.
           </p>
         </div>
 
         <div className="ol-publish-controls flex flex-wrap items-center gap-3">
-          <div className="relative min-w-[200px] max-w-sm flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#737373]" />
-            <Input
+          <div className="ol-search flex min-w-[200px] max-w-sm flex-1 items-center gap-3 px-2">
+            <Search className="ol-search-icon size-5 shrink-0" aria-hidden />
+            <input
+              type="text"
               placeholder="Search by page, author, or description..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="ol-publish-input border-[#525252] bg-[#262626] pl-10 text-[#D4D4D4] placeholder:text-[#737373]"
+              className="h-full min-w-0 flex-1 bg-transparent text-sm leading-4 text-[var(--ol-text)] outline-none placeholder:text-[var(--ol-text-muted)]"
             />
           </div>
 
           <Select value={filterPage} onValueChange={setFilterPage}>
-            <SelectTrigger className="w-[160px] border-[#525252] bg-[#262626] text-[#D4D4D4]">
+            <SelectTrigger className="w-[160px] text-sm">
               <SelectValue placeholder="Filter by page" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Pages</SelectItem>
+            <SelectContent className={dsSelectContentClass}>
+              <SelectItem className={dsSelectItemClass} value="all">
+                All Pages
+              </SelectItem>
               {uniquePages.map((page) => (
-                <SelectItem key={page} value={page}>
+                <SelectItem className={dsSelectItemClass} key={page} value={page}>
                   {page}
                 </SelectItem>
               ))}
@@ -696,38 +938,48 @@ export function PublishHistorySection({
           </Select>
 
           <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-[140px] border-[#525252] bg-[#262626] text-[#D4D4D4]">
+            <SelectTrigger className="w-[140px] text-sm">
               <SelectValue placeholder="Filter by type" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="text">Text</SelectItem>
-              <SelectItem value="image">Image</SelectItem>
-              <SelectItem value="layout">Layout</SelectItem>
-              <SelectItem value="new">New</SelectItem>
-              <SelectItem value="multiple">Multiple</SelectItem>
-              <SelectItem value="delete">Delete</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[140px] border-[#525252] bg-[#262626] text-[#D4D4D4]">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="published">Published</SelectItem>
+            <SelectContent className={dsSelectContentClass}>
+              <SelectItem className={dsSelectItemClass} value="all">
+                All Types
+              </SelectItem>
+              {uniqueContentTypes.map((ct) => (
+                <SelectItem className={dsSelectItemClass} key={ct} value={ct}>
+                  {ct}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
 
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-white">Recent Changes</h3>
-          <span className="text-sm text-[#BAB8BF]">
-            {filteredChanges.length} {filteredChanges.length === 1 ? "entry" : "entries"}
-          </span>
-        </div>
+        <Tabs value={filterStatus} onValueChange={setFilterStatus} className="gap-0">
+          <TabsList className="h-9 w-fit items-center gap-1 rounded-md border border-[var(--ol-border)] bg-[var(--ol-input-bg)] p-1">
+            {statusTabs.map((tab) => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className={cn(
+                  "flex-none gap-2 rounded-sm border-0 px-3 py-0 text-sm font-medium text-[var(--ol-text-muted)] transition-colors",
+                  "hover:text-[var(--ol-text)]",
+                  "data-[state=active]:bg-[#0062F2] data-[state=active]:text-white data-[state=active]:shadow-sm",
+                  "dark:text-[var(--ol-text-muted)] dark:data-[state=active]:border-transparent dark:data-[state=active]:bg-[#0062F2] dark:data-[state=active]:text-white",
+                )}
+              >
+                {tab.label}
+                <span
+                  className={cn(
+                    "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold leading-none tabular-nums",
+                    filterStatus === tab.value ? "bg-white/20 text-white" : "bg-[var(--ol-chip-bg)] text-[var(--ol-text-muted)]",
+                  )}
+                >
+                  {tab.count}
+                </span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
         <div className="ol-publish-table-wrap">
           <Table className="ol-publish-table">
@@ -742,9 +994,9 @@ export function PublishHistorySection({
                       onCheckedChange={() => toggleAllPending()}
                       disabled={pendingIds.length === 0}
                       aria-label="Select or clear all pending changes for publish"
-                      className="size-4 border-[#737373] bg-[#262626] data-[state=checked]:border-[#3B76D3] data-[state=checked]:bg-[#3B76D3] data-[state=indeterminate]:border-[#3B76D3] data-[state=indeterminate]:bg-[#3B76D3]"
+                      className="size-4 border-[var(--ol-border)] bg-[var(--ol-input-bg)] data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary"
                     />
-                    <span className="text-xs font-semibold leading-tight text-[#D4D4D4]">Include</span>
+                    <span className="text-xs font-semibold leading-tight text-[var(--ol-text-muted)]">Include</span>
                   </span>
                 </TableHead>
                 <TableHead className="h-auto">
@@ -756,8 +1008,13 @@ export function PublishHistorySection({
                 <TableHead className="h-auto">
                   <SortableHeader>Description</SortableHeader>
                 </TableHead>
-                <TableHead className="h-auto">
-                  <SortableHeader>Author</SortableHeader>
+                <TableHead
+                  className="h-auto"
+                  aria-sort={authorSort === "asc" ? "ascending" : authorSort === "desc" ? "descending" : "none"}
+                >
+                  <SortableButtonHeader direction={authorSort} onToggle={toggleAuthorSort}>
+                    Author
+                  </SortableButtonHeader>
                 </TableHead>
                 <TableHead className="h-auto">
                   <SortableHeader>Modified</SortableHeader>
@@ -765,13 +1022,28 @@ export function PublishHistorySection({
                 <TableHead className="h-auto">
                   <SortableHeader>Status</SortableHeader>
                 </TableHead>
+                {showVersionColumn ? (
+                  <TableHead className="h-auto">
+                    <SortableHeader>Version</SortableHeader>
+                  </TableHead>
+                ) : null}
                 <TableHead className="h-auto">
                   <SortableHeader>Actions</SortableHeader>
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredChanges.map((change) => (
+              {pageChanges.length === 0 ? (
+                <TableRow className="border-0 hover:bg-transparent">
+                  <TableCell colSpan={emptyStateColSpan} className="px-6 py-14 text-center align-middle">
+                    <div role="status" className="mx-auto flex max-w-md flex-col items-center gap-1.5">
+                      <p className="text-base font-medium text-[var(--ol-text)]">{emptyState.title}</p>
+                      <p className="text-sm font-normal leading-5 text-[var(--ol-text-muted)]">{emptyState.body}</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                pageChanges.map((change) => (
                 <TableRow key={change.id} className="border-0">
                   <TableCell className="text-center align-middle">
                     {change.status === "pending" ? (
@@ -779,10 +1051,10 @@ export function PublishHistorySection({
                         checked={includedSet.has(change.id)}
                         onCheckedChange={(v) => togglePendingRow(change.id, v === true)}
                         aria-label={`Include pending change on ${change.page} in next publish`}
-                        className="mx-auto size-4 border-[#737373] bg-[#262626] data-[state=checked]:border-[#3B76D3] data-[state=checked]:bg-[#3B76D3]"
+                        className="mx-auto size-4 border-[var(--ol-border)] bg-[var(--ol-input-bg)] data-[state=checked]:border-primary data-[state=checked]:bg-primary"
                       />
                     ) : (
-                      <span className="text-[#525252]" aria-hidden>
+                      <span className="text-[var(--ol-text-subtle)]" aria-hidden>
                         —
                       </span>
                     )}
@@ -791,7 +1063,11 @@ export function PublishHistorySection({
                   <TableCell>
                     <ChangeTypeBadge change={change} />
                   </TableCell>
-                  <TableCell className="max-w-md whitespace-normal font-normal">{change.description}</TableCell>
+                  <TableCell className="max-w-md font-normal">
+                    <span className="line-clamp-2 whitespace-normal" title={change.description}>
+                      {change.description}
+                    </span>
+                  </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap items-center gap-2">
                       <AuthorHoverCard
@@ -799,17 +1075,17 @@ export function PublishHistorySection({
                         initials={change.author.initials}
                         avatar={change.author.avatar}
                         email={change.author.email}
-                        role={change.author.role}
-                        triggerClassName="[&_span]:text-[#D4D4D4]"
+                        changeContext={{ page: change.page, description: change.description }}
+                        pageAuthors={authorsByPage.get(change.page)}
                       />
                       {change.status === "pending" && change.author.name === currentUserDisplayName ? (
-                        <span className="rounded-[4px] border border-[#525252] px-1.5 py-0.5 text-[11px] font-medium leading-none text-[#BAB8BF]">
+                        <span className="rounded-[4px] border border-[var(--ol-border)] px-1.5 py-0.5 text-[11px] font-medium leading-none text-[var(--ol-text-muted)]">
                           you
                         </span>
                       ) : null}
                     </div>
                   </TableCell>
-                  <TableCell className="font-normal text-[#D4D4D4]">{format(change.timestamp, "MMM d, h:mm a")}</TableCell>
+                  <TableCell className="font-normal text-[var(--ol-text-muted)]">{format(change.timestamp, "MMM d, h:mm a")}</TableCell>
                   <TableCell>
                     <span
                       className={`${typeBadgeClass} ${getStatusColor(change.status)}`}
@@ -817,22 +1093,116 @@ export function PublishHistorySection({
                       {change.status}
                     </span>
                   </TableCell>
+                  {showVersionColumn ? (
+                    <TableCell className="font-normal tabular-nums">
+                      {change.version ? (
+                        <span className="text-[var(--ol-text)]">{change.version}</span>
+                      ) : (
+                        <>
+                          <span className="text-[var(--ol-text-subtle)]" aria-hidden>
+                            —
+                          </span>
+                          <span className="sr-only">Not yet published</span>
+                        </>
+                      )}
+                    </TableCell>
+                  ) : null}
                   <TableCell>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleViewDiff(change.id)}
-                      className="gap-1 text-sm font-normal text-[#99CCFF] hover:bg-white/5 hover:text-[#b3d9ff]"
+                      className="gap-1 text-sm font-normal text-[var(--ol-link)] hover:bg-black/[0.04] dark:hover:bg-white/5 hover:text-[var(--ol-link)]"
                     >
                       <Eye className="h-4 w-4" />
                       View changes
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))}
+                ))
+              )}
             </TableBody>
           </Table>
         </div>
+
+        {displayedChanges.length > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 px-1 py-2">
+            <span className="text-sm text-[var(--ol-text-muted)]">
+              {rangeStart}–{rangeEnd} of {displayedChanges.length}
+            </span>
+            {totalPages > 1 ? (
+              <Pagination className="mx-0 w-auto justify-end">
+                <PaginationContent className="gap-2">
+                  <PaginationItem>
+                    <PaginationFirst
+                      href="#"
+                      aria-disabled={page === 1}
+                      className={cn(page === 1 && "pointer-events-none")}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (page > 1) setCurrentPage(1);
+                      }}
+                    />
+                  </PaginationItem>
+                  <PaginationItem className="mr-1">
+                    <PaginationPrevious
+                      href="#"
+                      aria-disabled={page === 1}
+                      className={cn(page === 1 && "pointer-events-none")}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (page > 1) setCurrentPage((p) => Math.max(1, p - 1));
+                      }}
+                    />
+                  </PaginationItem>
+                  {pageItems.map((item, idx) =>
+                    item === "ellipsis" ? (
+                      <PaginationItem key={`ellipsis-${idx}`}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    ) : (
+                      <PaginationItem key={item}>
+                        <PaginationLink
+                          href="#"
+                          isActive={item === page}
+                          aria-label={`Go to page ${item}`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setCurrentPage(item);
+                          }}
+                        >
+                          {item}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ),
+                  )}
+                  <PaginationItem className="ml-1">
+                    <PaginationNext
+                      href="#"
+                      aria-disabled={page === totalPages}
+                      className={cn(page === totalPages && "pointer-events-none")}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (page < totalPages) setCurrentPage((p) => Math.min(totalPages, p + 1));
+                      }}
+                    />
+                  </PaginationItem>
+                  <PaginationItem>
+                    <PaginationLast
+                      href="#"
+                      aria-disabled={page === totalPages}
+                      className={cn(page === totalPages && "pointer-events-none")}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (page < totalPages) setCurrentPage(totalPages);
+                      }}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       {selectedDiff && (

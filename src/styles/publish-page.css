@@ -1,9 +1,9 @@
-/* OLI Publish screen — aligns with design tokens (Open Sans, #0D0C0F shell, table chrome) */
+/* OLI Publish screen — theme-aware via --ol-* tokens (see theme.css :root / .dark) */
 
 .ol-publish-page {
   min-height: 100%;
-  background-color: #0d0c0f;
-  color: #ffffff;
+  background-color: var(--ol-page-bg);
+  color: var(--ol-text);
   font-family: var(--font-family-open), ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -24,7 +24,7 @@
 .ol-publish-table-wrap {
   width: 100%;
   overflow-x: auto;
-  outline: 1px solid #525252;
+  outline: 1px solid var(--ol-border);
   outline-offset: -1px;
 }
 
@@ -36,14 +36,14 @@
 }
 
 .ol-publish-page .ol-publish-table thead tr {
-  border-bottom: 1px solid #525252;
+  border-bottom: 1px solid var(--ol-border);
 }
 
 .ol-publish-page .ol-publish-table th {
-  background-color: #525252;
-  border-right: 1px solid #3b3740;
-  border-bottom: 1px solid #3b3740;
-  color: #d4d4d4;
+  background-color: var(--ol-table-header-bg); /* Table/table-top-row */
+  border-right: 1px solid var(--ol-border);
+  border-bottom: 1px solid var(--ol-border);
+  color: var(--ol-table-header-text);
   font-weight: 600;
   text-align: left;
   padding: 8px;
@@ -56,17 +56,26 @@
 }
 
 .ol-publish-page .ol-publish-table tbody tr {
-  border-bottom: 1px solid #525252;
+  border-bottom: 1px solid var(--ol-border);
   transition: background-color 0.15s ease;
 }
 
+/* Zebra striping (Torus DS table rows) — row-1 / row-2 tokens per theme. */
+.ol-publish-page .ol-publish-table tbody tr:nth-child(odd) {
+  background-color: var(--ol-table-row-1);
+}
+
+.ol-publish-page .ol-publish-table tbody tr:nth-child(even) {
+  background-color: var(--ol-table-row-2);
+}
+
 .ol-publish-page .ol-publish-table tbody tr:hover {
-  background-color: rgba(38, 38, 38, 0.65);
+  background-color: var(--ol-table-hover);
 }
 
 .ol-publish-page .ol-publish-table td {
-  border-right: 1px solid #525252;
-  color: #d4d4d4;
+  border-right: 1px solid var(--ol-border);
+  color: var(--ol-text);
   padding: 8px;
   vertical-align: middle;
 }
@@ -81,17 +90,56 @@
   gap: 4px;
 }
 
-.ol-publish-controls .ol-publish-input,
+/* Torus DS input controls — fill-input / border-input, focused states (radius-075 = 6px) */
+.ol-publish-controls .ol-search,
 .ol-publish-controls [data-slot="select-trigger"] {
-  background-color: #262626;
-  border-color: #525252;
-  color: #d4d4d4;
+  height: 36px;
+  border-radius: 6px;
+  background-color: var(--ol-input-bg); /* fill-input */
+  border: 1px solid var(--ol-input-border); /* border-input */
+  color: var(--ol-text); /* text-high */
+  box-shadow: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.ol-publish-controls .ol-publish-input::placeholder {
-  color: #737373;
+.ol-publish-controls .ol-search:hover,
+.ol-publish-controls [data-slot="select-trigger"]:hover {
+  background-color: var(--ol-input-focus); /* fill-input-focused */
+  border-color: var(--ol-input-focus); /* border-input-focused */
+  box-shadow: 0 2px 3px rgba(0, 52, 99, 0.15); /* shadow-button-hover */
+}
+
+.ol-publish-controls .ol-search:focus-within {
+  background-color: var(--ol-input-bg);
+  border-color: var(--ol-input-focus);
+  box-shadow: 0 2px 2px rgba(0, 52, 99, 0.1); /* shadow-button */
+}
+
+.ol-publish-controls [data-slot="select-trigger"][data-state="open"] {
+  background-color: var(--ol-input-bg);
+  border-color: var(--ol-input-focus);
+  box-shadow: none;
+}
+
+/* Chevron reads at full strength (icon-default) */
+.ol-publish-controls [data-slot="select-trigger"] svg {
+  color: var(--ol-text-muted);
+  opacity: 1;
+}
+
+.ol-publish-controls .ol-search .ol-search-icon {
+  color: var(--ol-text-muted); /* icon-default */
+  transition: color 0.15s ease;
+}
+
+.ol-publish-controls .ol-search:focus-within .ol-search-icon {
+  color: var(--ol-text); /* icon-active */
+}
+
+.ol-publish-controls .ol-search input::placeholder {
+  color: var(--ol-text-muted); /* text-low */
 }
 
 .ol-publish-divider {
-  border-top: 1px solid #e5e5e5;
+  border-top: 1px solid var(--ol-border);
 }

@@ -1,54 +1,51 @@
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { Button } from "./ui/button";
-import { Mail } from "lucide-react";
+import { useState } from "react";
+import { DraftEmailModal } from "./DraftEmailModal";
 import { cn } from "./ui/utils";
 
-interface AuthorHoverCardProps {
+interface AuthorCellProps {
   name: string;
-  initials: string;
+  initials?: string;
   avatar?: string;
   email: string;
-  role: string;
   triggerClassName?: string;
+  /** Optional change context, so the draft email can reference what's being followed up on. */
+  changeContext?: { page: string; description: string };
+  /** Other authors who touched this page, offered as a "To:" autocomplete. */
+  pageAuthors?: { name: string; email: string }[];
 }
 
-export function AuthorHoverCard({ name, initials, avatar, email, role, triggerClassName }: AuthorHoverCardProps) {
+/**
+ * Author cell, matching the "Created by" column: the name in accent blue with a
+ * smaller grey email to its right. Clicking the email opens a Draft Email modal
+ * (Torus DS) instead of a mailto: link, so the message can be reviewed and edited
+ * before sending.
+ */
+export function AuthorHoverCard({ name, email, triggerClassName, changeContext, pageAuthors }: AuthorCellProps) {
+  const [showEmailDraft, setShowEmailDraft] = useState(false);
+
+  const subject = changeContext ? `Re: ${changeContext.page} update` : `Question for ${name}`;
+  const body = changeContext
+    ? `Hi {first_name},\n\nI wanted to follow up on your recent change to "${changeContext.page}": ${changeContext.description}\n\nLet me know if you have a moment to walk me through it, or feel free to reply here with any context.\n\nThanks!`
+    : `Hi {first_name},\n\n`;
+
   return (
-    <HoverCard>
-      <HoverCardTrigger asChild>
-        <button
-          type="button"
-          className={cn("flex items-center gap-2 transition-opacity hover:opacity-80", triggerClassName)}
-        >
-          <Avatar className="w-8 h-8">
-            <AvatarImage src={avatar} alt={name} />
-            <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-          </Avatar>
-          <span className="text-left text-foreground">{name}</span>
-        </button>
-      </HoverCardTrigger>
-      <HoverCardContent className="w-80 p-0 overflow-hidden" side="top">
-        <div className="bg-primary p-6 text-center">
-          <Avatar className="w-24 h-24 mx-auto mb-3 border-4 border-primary-foreground/20">
-            <AvatarImage src={avatar} alt={name} />
-            <AvatarFallback className="text-3xl bg-destructive-foreground text-white">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
-          <h3 className="text-xl font-semibold text-primary-foreground mb-1">{name}</h3>
-          <p className="text-primary-foreground/90">{role}</p>
-        </div>
-        <div className="p-4 space-y-3">
-          <div className="flex items-center gap-2 text-sm text-foreground">
-            <Mail className="w-4 h-4 text-muted-foreground" />
-            <span>{email}</span>
-          </div>
-          <Button variant="outline" size="sm" className="w-full">
-            View profile
-          </Button>
-        </div>
-      </HoverCardContent>
-    </HoverCard>
+    <div className={cn("flex flex-wrap items-baseline gap-x-2 gap-y-0.5 leading-tight", triggerClassName)}>
+      <span className="text-left text-[15px] font-normal text-[var(--ol-link-strong)]">{name}</span>
+      <button
+        type="button"
+        onClick={() => setShowEmailDraft(true)}
+        className="text-left text-xs text-[var(--ol-text-muted)] underline-offset-2 hover:underline"
+      >
+        {email}
+      </button>
+      <DraftEmailModal
+        open={showEmailDraft}
+        onOpenChange={setShowEmailDraft}
+        recipients={[email]}
+        subject={subject}
+        body={body}
+        suggestedRecipients={pageAuthors}
+      />
+    </div>
   );
 }
