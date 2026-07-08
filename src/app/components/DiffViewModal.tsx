@@ -10,7 +10,7 @@ import {
 import { ScrollArea } from "./ui/scroll-area";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { ChevronRight, ChevronLeft, X, Pencil, Users, CirclePlus, CircleMinus, CornerDownRight, Eye, Lock } from "lucide-react";
+import { ChevronRight, ChevronLeft, X, Pencil, Users, CirclePlus, CircleMinus, CornerDownRight, Eye } from "lucide-react";
 import { cn } from "./ui/utils";
 import { DiffCurriculumFullPageLayout, DiffCurriculumStaticContent } from "./DiffCurriculumStaticContent";
 
@@ -1117,22 +1117,18 @@ export function DiffViewModal({
 
             <div
               role="note"
-              aria-label="Preview only"
-              className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b-2 border-[var(--ol-link-strong)] bg-[var(--ol-card-bg)] px-7 py-2.5"
+              aria-label="Read-only"
+              className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b-2 border-[var(--ol-link-strong)] bg-[var(--ol-card-bg)] px-7 py-2.5"
             >
               <div className="flex min-w-0 flex-wrap items-center gap-2.5">
                 <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-[var(--ol-accent-blue-bg)] px-2.5 py-1 text-[13px] font-medium text-[var(--ol-link)] ring-1 ring-[var(--ol-link-strong)]/40">
                   <Eye className="size-3.5 shrink-0" aria-hidden />
-                  Preview only
+                  Read-only
                 </span>
                 <span className="min-w-0 text-[12px] leading-snug text-[var(--ol-text-muted)]">
                   {previewNote}
                 </span>
               </div>
-              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-[var(--ol-border)] bg-[var(--ol-input-bg)] px-2.5 py-1 text-[12px] font-medium text-[var(--ol-text-muted)]">
-                <Lock className="size-3.5 shrink-0" aria-hidden />
-                Read-only
-              </span>
             </div>
 
             <div ref={centerScrollRef} className={cn("min-h-0 flex-1 overflow-y-auto px-7 pb-12 pt-1", torus.canvas)}>

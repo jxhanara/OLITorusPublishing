@@ -820,7 +820,7 @@ export function PublishHistorySection({
 
     const matchesPage = filterPage === "all" || change.page === filterPage;
     const matchesType = filterType === "all" || change.contentType === filterType;
-    const matchesStatus = filterStatus === "all" || change.status === filterStatus;
+    const matchesStatus = change.status === filterStatus;
 
     return matchesSearch && matchesPage && matchesType && matchesStatus;
   });
@@ -868,6 +868,7 @@ export function PublishHistorySection({
   const uniqueContentTypes = Array.from(new Set(effectiveChanges.map((c) => c.contentType)));
   // Version only matters once something is published; hide the column when viewing only pending rows.
   const showVersionColumn = filterStatus !== "pending";
+  const showDescriptionColumn = filterStatus === "published";
 
   // Empty-state copy keyed to the active status tab. Read out for screen readers via role="status".
   const emptyState =
@@ -876,27 +877,21 @@ export function PublishHistorySection({
           title: "No pending changes",
           body: "There are no changes waiting to be included in the next publish.",
         }
-      : filterStatus === "published"
-        ? {
-            title: "No published changes yet",
-            body: "Published changes will appear here after this project is published.",
-          }
-        : {
-            title: "No changes found",
-            body: "Try adjusting your search or filters.",
-          };
-  const emptyStateColSpan = showVersionColumn ? 9 : 8;
+      : {
+          title: "No published changes yet",
+          body: "Published changes will appear here after this project is published.",
+        };
+  const emptyStateColSpan =
+    7 + (showDescriptionColumn ? 1 : 0) + (showVersionColumn ? 1 : 0);
 
   // Per-status totals for the tab counts (independent of the search/page/type filters).
   const statusCounts = {
     pending: effectiveChanges.filter((c) => c.status === "pending").length,
     published: effectiveChanges.filter((c) => c.status === "published").length,
-    all: effectiveChanges.length,
   };
   const statusTabs = [
     { value: "pending", label: "Pending", count: statusCounts.pending },
     { value: "published", label: "Published", count: statusCounts.published },
-    { value: "all", label: "All", count: statusCounts.all },
   ] as const;
 
   return (
@@ -985,8 +980,8 @@ export function PublishHistorySection({
           <Table className="ol-publish-table">
             <TableHeader>
               <TableRow className="border-0 hover:bg-transparent">
-                <TableHead className="h-auto w-[52px] min-w-[52px] text-center">
-                  <span className="flex flex-col items-center gap-1.5">
+                <TableHead className="h-auto w-[52px] min-w-[52px] align-middle">
+                  <div className="flex items-center justify-center">
                     <Checkbox
                       checked={
                         allPendingSelected ? true : somePendingSelected ? "indeterminate" : false
@@ -996,8 +991,7 @@ export function PublishHistorySection({
                       aria-label="Select or clear all pending changes for publish"
                       className="size-4 border-[var(--ol-border)] bg-[var(--ol-input-bg)] data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary"
                     />
-                    <span className="text-xs font-semibold leading-tight text-[var(--ol-text-muted)]">Include</span>
-                  </span>
+                  </div>
                 </TableHead>
                 <TableHead className="h-auto">
                   <SortableHeader>Page</SortableHeader>
@@ -1005,9 +999,11 @@ export function PublishHistorySection({
                 <TableHead className="h-auto">
                   <SortableHeader>Type</SortableHeader>
                 </TableHead>
-                <TableHead className="h-auto">
-                  <SortableHeader>Description</SortableHeader>
-                </TableHead>
+                {showDescriptionColumn ? (
+                  <TableHead className="h-auto">
+                    <SortableHeader>Description</SortableHeader>
+                  </TableHead>
+                ) : null}
                 <TableHead
                   className="h-auto"
                   aria-sort={authorSort === "asc" ? "ascending" : authorSort === "desc" ? "descending" : "none"}
@@ -1045,29 +1041,33 @@ export function PublishHistorySection({
               ) : (
                 pageChanges.map((change) => (
                 <TableRow key={change.id} className="border-0">
-                  <TableCell className="text-center align-middle">
-                    {change.status === "pending" ? (
-                      <Checkbox
-                        checked={includedSet.has(change.id)}
-                        onCheckedChange={(v) => togglePendingRow(change.id, v === true)}
-                        aria-label={`Include pending change on ${change.page} in next publish`}
-                        className="mx-auto size-4 border-[var(--ol-border)] bg-[var(--ol-input-bg)] data-[state=checked]:border-primary data-[state=checked]:bg-primary"
-                      />
-                    ) : (
-                      <span className="text-[var(--ol-text-subtle)]" aria-hidden>
-                        —
-                      </span>
-                    )}
+                  <TableCell className="align-middle">
+                    <div className="flex items-center justify-center">
+                      {change.status === "pending" ? (
+                        <Checkbox
+                          checked={includedSet.has(change.id)}
+                          onCheckedChange={(v) => togglePendingRow(change.id, v === true)}
+                          aria-label={`Include pending change on ${change.page} in next publish`}
+                          className="size-4 border-[var(--ol-border)] bg-[var(--ol-input-bg)] data-[state=checked]:border-primary data-[state=checked]:bg-primary"
+                        />
+                      ) : (
+                        <span className="text-[var(--ol-text-subtle)]" aria-hidden>
+                          —
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="font-normal">{change.page}</TableCell>
                   <TableCell>
                     <ChangeTypeBadge change={change} />
                   </TableCell>
-                  <TableCell className="max-w-md font-normal">
-                    <span className="line-clamp-2 whitespace-normal" title={change.description}>
-                      {change.description}
-                    </span>
-                  </TableCell>
+                  {showDescriptionColumn ? (
+                    <TableCell className="max-w-md font-normal">
+                      <span className="line-clamp-2 whitespace-normal" title={change.description}>
+                        {change.description}
+                      </span>
+                    </TableCell>
+                  ) : null}
                   <TableCell>
                     <div className="flex flex-wrap items-center gap-2">
                       <AuthorHoverCard
