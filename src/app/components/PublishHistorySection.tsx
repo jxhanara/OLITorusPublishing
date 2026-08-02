@@ -869,6 +869,7 @@ export function PublishHistorySection({
   // Version only matters once something is published; hide the column when viewing only pending rows.
   const showVersionColumn = filterStatus !== "pending";
   const showDescriptionColumn = filterStatus === "published";
+  const showIncludeColumn = filterStatus === "pending";
 
   // Empty-state copy keyed to the active status tab. Read out for screen readers via role="status".
   const emptyState =
@@ -882,7 +883,10 @@ export function PublishHistorySection({
           body: "Published changes will appear here after this project is published.",
         };
   const emptyStateColSpan =
-    7 + (showDescriptionColumn ? 1 : 0) + (showVersionColumn ? 1 : 0);
+    6 +
+    (showIncludeColumn ? 1 : 0) +
+    (showDescriptionColumn ? 1 : 0) +
+    (showVersionColumn ? 1 : 0);
 
   // Per-status totals for the tab counts (independent of the search/page/type filters).
   const statusCounts = {
@@ -980,19 +984,21 @@ export function PublishHistorySection({
           <Table className="ol-publish-table">
             <TableHeader>
               <TableRow className="border-0 hover:bg-transparent">
-                <TableHead className="h-auto w-[52px] min-w-[52px] align-middle">
-                  <div className="flex items-center justify-center">
-                    <Checkbox
-                      checked={
-                        allPendingSelected ? true : somePendingSelected ? "indeterminate" : false
-                      }
-                      onCheckedChange={() => toggleAllPending()}
-                      disabled={pendingIds.length === 0}
-                      aria-label="Select or clear all pending changes for publish"
-                      className="size-4 border-[var(--ol-border)] bg-[var(--ol-input-bg)] data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary"
-                    />
-                  </div>
-                </TableHead>
+                {showIncludeColumn ? (
+                  <TableHead className="h-auto w-[52px] min-w-[52px] align-middle">
+                    <div className="flex items-center justify-center">
+                      <Checkbox
+                        checked={
+                          allPendingSelected ? true : somePendingSelected ? "indeterminate" : false
+                        }
+                        onCheckedChange={() => toggleAllPending()}
+                        disabled={pendingIds.length === 0}
+                        aria-label="Select or clear all pending changes for publish"
+                        className="size-4 border-[var(--ol-border)] bg-[var(--ol-input-bg)] data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary"
+                      />
+                    </div>
+                  </TableHead>
+                ) : null}
                 <TableHead className="h-auto">
                   <SortableHeader>Page</SortableHeader>
                 </TableHead>
@@ -1041,22 +1047,24 @@ export function PublishHistorySection({
               ) : (
                 pageChanges.map((change) => (
                 <TableRow key={change.id} className="border-0">
-                  <TableCell className="align-middle">
-                    <div className="flex items-center justify-center">
-                      {change.status === "pending" ? (
-                        <Checkbox
-                          checked={includedSet.has(change.id)}
-                          onCheckedChange={(v) => togglePendingRow(change.id, v === true)}
-                          aria-label={`Include pending change on ${change.page} in next publish`}
-                          className="size-4 border-[var(--ol-border)] bg-[var(--ol-input-bg)] data-[state=checked]:border-primary data-[state=checked]:bg-primary"
-                        />
-                      ) : (
-                        <span className="text-[var(--ol-text-subtle)]" aria-hidden>
-                          —
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
+                  {showIncludeColumn ? (
+                    <TableCell className="align-middle">
+                      <div className="flex items-center justify-center">
+                        {change.status === "pending" ? (
+                          <Checkbox
+                            checked={includedSet.has(change.id)}
+                            onCheckedChange={(v) => togglePendingRow(change.id, v === true)}
+                            aria-label={`Include pending change on ${change.page} in next publish`}
+                            className="size-4 border-[var(--ol-border)] bg-[var(--ol-input-bg)] data-[state=checked]:border-primary data-[state=checked]:bg-primary"
+                          />
+                        ) : (
+                          <span className="text-[var(--ol-text-subtle)]" aria-hidden>
+                            —
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                  ) : null}
                   <TableCell className="font-normal">{change.page}</TableCell>
                   <TableCell>
                     <ChangeTypeBadge change={change} />
