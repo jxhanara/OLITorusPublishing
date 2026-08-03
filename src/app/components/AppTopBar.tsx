@@ -28,11 +28,14 @@ export function AppTopBar() {
       >
         {isDark ? <Sun className="size-5" strokeWidth={1.75} /> : <Moon className="size-5" strokeWidth={1.75} />}
       </button>
+      {/* Avatar per Torus DS (Figma "Component 3"): #004A9F circle, 2px #D4D4D4 ring, Open Sans SemiBold 14 white initials. */}
       <div
-        className="size-8 shrink-0 rounded-full border-2 border-[var(--ol-border)] bg-[var(--ol-input-focus)]"
-        aria-label="Account"
+        className="flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-[#D4D4D4] bg-[#004A9F] font-[family-name:var(--font-family-open)] text-[14px] font-semibold leading-none text-white"
+        aria-label="Account: Hanara Nam"
         role="img"
-      />
+      >
+        HN
+      </div>
     </header>
   );
 }

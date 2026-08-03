@@ -110,7 +110,7 @@ const torus = {
   editedBorder: "border-[var(--ol-diff-edited)]/55",
   removed: "text-[var(--ol-action-removed)]",
   removedBg: "bg-[var(--ol-diff-removed-bg)]",
-  publish: "bg-[#0062F2] hover:bg-[#0D70FF] text-white",
+  publish: "bg-primary hover:bg-[#0D70FF] text-white",
 } as const;
 
 function loStatusToKind(status?: string): ChangeKind | null {
@@ -1413,7 +1413,7 @@ export function DiffViewModal({
                         <div className="flex flex-wrap gap-1">
                           <button
                             type="button"
-                            className="rounded-sm border border-[#0062F2] bg-white px-3 py-2 text-[14px] text-[#0062F2]"
+                            className="rounded-sm border border-primary bg-white px-3 py-2 text-[14px] text-primary"
                           >
                             Archive
                           </button>
@@ -1424,13 +1424,13 @@ export function DiffViewModal({
                       </div>
                       <div className="flex flex-col gap-1">
                         <label className="flex cursor-default items-start gap-3 text-[16px] leading-6 text-[var(--ol-text)]">
-                          <span className="mt-0.5 inline-flex size-[18px] shrink-0 items-center justify-center bg-[#0062F2]">
+                          <span className="mt-0.5 inline-flex size-[18px] shrink-0 items-center justify-center bg-primary">
                             <span className="size-2 bg-white" />
                           </span>
                           Allow posts to be visible without approval
                         </label>
                         <label className="flex cursor-default items-start gap-3 text-[16px] leading-6 text-[var(--ol-text)]">
-                          <span className="mt-0.5 inline-flex size-[18px] shrink-0 items-center justify-center bg-[#0062F2]">
+                          <span className="mt-0.5 inline-flex size-[18px] shrink-0 items-center justify-center bg-primary">
                             <span className="size-2 bg-white" />
                           </span>
                           Allow anonymous posts

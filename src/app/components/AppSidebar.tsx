@@ -2,17 +2,15 @@ import { Link, useLocation } from "react-router";
 import {
   ChevronRight,
   ChevronDown,
-  BookOpen,
   Send,
-  GraduationCap,
   FileSearch,
   Lightbulb,
-  BarChart3,
   LineChart,
   Info,
   LogOut,
 } from "lucide-react";
 import { useState } from "react";
+import { WritingIcon, ChartBarIcon, SchoolIcon } from "./TorusIcons";
 import { cn } from "./ui/utils";
 
 const nav = "font-[family-name:var(--font-family-open)]";
@@ -122,7 +120,7 @@ export function AppSidebar() {
                 aria-current={courseAuthorActive ? "page" : undefined}
                 title="Course Author"
               >
-                <BookOpen className={iconClass(courseAuthorActive)} strokeWidth={1.67} />
+                <WritingIcon className={iconClass(courseAuthorActive)} />
                 <span className={cn("leading-5", courseAuthorActive ? "text-[var(--ol-nav-purple-text)]" : "text-[var(--ol-text-muted)]")}>
                   Course Author
                 </span>
@@ -133,13 +131,13 @@ export function AppSidebar() {
                 aria-current={instructorActive ? "page" : undefined}
                 title="Instructor"
               >
-                <BarChart3 className={iconClass(instructorActive)} strokeWidth={1.67} />
+                <ChartBarIcon className={iconClass(instructorActive)} />
                 <span className={cn("leading-5", instructorActive ? "text-[var(--ol-nav-purple-text)]" : "text-[var(--ol-text-muted)]")}>
                   Instructor
                 </span>
               </Link>
               <button type="button" className={cn(personaRow(false), "mb-3")} title="Student">
-                <GraduationCap className={iconClass()} strokeWidth={1.54} />
+                <SchoolIcon className={iconClass()} />
                 <span className={navItemText}>Student</span>
               </button>
             </div>
@@ -246,7 +244,7 @@ export function AppSidebar() {
               title="Course Author"
               aria-current={courseAuthorActive ? "page" : undefined}
             >
-              <BookOpen className="size-5 shrink-0" strokeWidth={1.67} />
+              <WritingIcon className="size-5 shrink-0" />
             </Link>
             <Link
               to="/instructor"
@@ -257,14 +255,14 @@ export function AppSidebar() {
               title="Instructor"
               aria-current={instructorActive ? "page" : undefined}
             >
-              <BarChart3 className="size-5 shrink-0" strokeWidth={1.67} />
+              <ChartBarIcon className="size-5 shrink-0" />
             </Link>
             <button
               type="button"
               className="flex size-10 items-center justify-center rounded-lg text-[var(--ol-text-muted)] hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
               title="Student"
             >
-              <GraduationCap className="size-5 shrink-0" strokeWidth={1.54} />
+              <SchoolIcon className="size-5 shrink-0" />
             </button>
 
             <div className="my-2 h-px w-8 bg-[var(--ol-border)]" aria-hidden />

@@ -1,0 +1,214 @@
+/* ============================================================================
+ * TORUS DESIGN SYSTEM — Figma reference tokens
+ * ----------------------------------------------------------------------------
+ * Source: "NG 23 - Torus Design System" Figma library
+ * Pulled from: Authoring Workflow (Hanara) Figma file
+ *   https://www.figma.com/design/TK3JQS9DKsTMNnkdbX2Pdj — node 78:2
+ *   ("Relevant components + design system" canvas, sampled from both the
+ *   light-mode "Browse All Course Sections" frame and the dark-mode
+ *   "Browse all Projects Dark Mode" frame, plus supporting Nav/Sidebar/Email
+ *   component instances)
+ *
+ * These are the ACTUAL bound variable values read directly off Figma
+ * component instances (via get_variable_defs) — i.e. the real source of
+ * truth the design file was built from, not hand-derived approximations.
+ *
+ * This file is a REFERENCE ONLY. It is intentionally NOT imported into
+ * src/styles/index.css, so it has no effect on the running app. Use it to
+ * look up/verify values, or to consciously reconcile src/styles/theme.css
+ * against the design system later.
+ *
+ * Token names mirror the Figma variable names/paths (in kebab-case) so they
+ * can be traced back to Figma directly. Values are grouped Light / Dark
+ * exactly like theme.css (`:root` = light, `.dark` = dark).
+ *
+ * RECONCILED with src/styles/theme.css (both applied):
+ *   1. `fill-primary` (primary button fill) is genuinely different per mode
+ *      in Figma: light #0080ff, dark #0062f2. --primary now matches per mode
+ *      (previously #0062f2 in both).
+ *   2. All Figma type styles (Body/Label/Heading) reference "Open Sans"
+ *      only. --font-family-public now points to "Open Sans" (previously
+ *      "Public Sans").
+ * ============================================================================ */
+
+:root {
+  /* --- Text --- */
+  --fds-text-high: #353740;
+  --fds-text-low: #45464c;
+  --fds-text-low-alpha: #757682; /* rgba variant seen as #757682bf-equivalent in dark */
+  --fds-text-white: #ffffff;
+  --fds-text-subtle: #757682; /* Figma var name: "Light mode text" — same value in both modes */
+  --fds-text-button: #006cd9;
+  --fds-text-button-secondary: #ffffff;
+  --fds-text-link: #1b67b2;
+  --fds-text-accent-blue: #1b67b2;
+  --fds-text-accent-orange: #a94f0e;
+  --fds-text-accent-teal: #00525c;
+  --fds-text-accent-purple: #9a40a8;
+  --fds-text-accent-green: #245d45; /* Figma: Table/Table-text-accent-green */
+  --fds-text-danger: #a42327; /* Figma: Table/Table-text-danger */
+
+  /* --- Icon --- */
+  --fds-icon-active: #353740;
+  --fds-icon-default: #757682;
+  --fds-icon-white: #ffffff;
+
+  /* --- Background / Fill --- */
+  --fds-bg-primary: #f3f4f8; /* inferred: matches Table/table-row-1 + existing --ol-page-bg */
+  --fds-bg-secondary: #ffffff;
+  --fds-fill-primary: #0080ff; /* ⚠ differs from theme.css --primary (#0062f2) in light mode */
+  --fds-fill-nav-active: #e6e9f2;
+  --fds-fill-selection-active: #353740;
+  --fds-fill-input: #ffffff; /* Specialty Tokens/Fill/fill-input */
+  --fds-fill-accent-blue: #deecff;
+  --fds-fill-accent-orange: #ffecde;
+  --fds-fill-accent-purple: #f7def8;
+  --fds-fill-accent-teal: #dcf3f5;
+  --fds-fill-accent-grey-muted: #b0b4bf;
+
+  /* --- Border --- */
+  --fds-border-default: #ced1d9;
+  --fds-border-input: #d4d4d4; /* Border/border-input (generic) */
+  --fds-border-input-specialty: #ced1d9; /* Specialty Tokens/Border/border-input */
+
+  /* --- Table --- */
+  --fds-table-top-row: #ffffff;
+  --fds-table-row-1: #f3f4f8;
+  --fds-table-row-2: #e3e7eb;
+  --fds-table-border: #ced1d9;
+
+  /* --- Shadow (rendered as CSS box-shadow) --- */
+  --fds-shadow-surface: 0px 2px 10px 0px rgba(0, 50, 99, 0.1); /* #0032631A */
+  --fds-shadow-button: 0px 2px 4px 0px rgba(0, 52, 99, 0.1); /* #0034631A — same in both modes */
+  --fds-shadow-button-hover: 0px 2px 6px 0px rgba(0, 52, 99, 0.15); /* #00346326 — same in both modes */
+
+  /* --- Spacing (Spacing Values/*) — same in both modes --- */
+  --fds-spacing-0: 0px;
+  --fds-spacing-050: 4px;
+  --fds-spacing-075: 6px;
+  --fds-spacing-100: 8px;
+  --fds-spacing-150: 12px;
+  --fds-spacing-200: 16px;
+  --fds-spacing-300: 24px;
+  --fds-spacing-400: 32px;
+
+  /* --- Radius — same in both modes --- */
+  --fds-radius-075: 6px;
+  --fds-radius-100: 8px;
+  --fds-radius-150: 12px;
+  --fds-radius-round: 999px;
+}
+
+.dark {
+  /* --- Text --- */
+  --fds-text-high: #eeebf5;
+  --fds-text-low: #bab8bf;
+  --fds-text-low-alpha: #eeebf5bf;
+  --fds-text-white: #ffffff;
+  --fds-text-subtle: #757682; /* same value as light — Figma var "Light mode text" */
+  --fds-text-button: #4ca6ff;
+  --fds-text-button-secondary: #ffffff;
+  --fds-text-link: #99ccff;
+  --fds-text-accent-blue: #99ccff;
+  --fds-text-accent-orange: #ffb387;
+  --fds-text-accent-teal: #87d7e0;
+  --fds-text-accent-purple: #ebaaf2;
+  --fds-text-accent-green: #39e581; /* Figma: Text/text-accent-green */
+  --fds-text-danger: #ff8787; /* Figma: Text/text-danger */
+
+  /* --- Icon --- */
+  --fds-icon-active: #ffffff;
+  --fds-icon-default: #bab8bf;
+  --fds-icon-white: #ffffff;
+  --fds-icon-accent-teal: #87d7e0;
+  --fds-icon-accent-purple: #ebaaf2;
+
+  /* --- Background / Fill --- */
+  --fds-bg-primary: #0d0c0f;
+  --fds-bg-secondary: #000000;
+  --fds-fill-primary: #0062f2; /* ⚠ differs from light mode (#0080ff) */
+  --fds-fill-secondary-hover: #ffffff1a;
+  --fds-fill-nav-active: #2b282e;
+  --fds-fill-selection-active: #2c2d40;
+  --fds-fill-input: #2b282e;
+  --fds-fill-detail-pill: #ffffff1a; /* Specialty Tokens/Fill/fill-detail-pill — dark-only surface */
+  --fds-fill-accent-blue: #363b59;
+  --fds-fill-accent-orange: #4c3f39;
+  --fds-fill-accent-purple: #463552;
+  --fds-fill-accent-teal: #364147;
+  --fds-fill-accent-grey-muted: #b0b4bf;
+  --fds-surface-secondary: #2b282e;
+
+  /* --- Border --- */
+  --fds-border-default: #3b3740;
+  --fds-border-input: #3e3f44; /* Border/border-input (generic) */
+  --fds-border-input-specialty: #2b282e; /* Specialty Tokens/Border/border-input */
+  --fds-border-bold: #ffffff80; /* dark-only, used for emphasis borders on dark surfaces */
+  --fds-border-bold-hover: #ffffff;
+  --fds-border-subtle: #2b282e;
+  --fds-border-muted: #1b191f;
+
+  /* --- Table --- */
+  --fds-table-top-row: #000000;
+  --fds-table-row-1: #0d0c0f;
+  --fds-table-row-2: #201d21;
+  --fds-table-border: #3b3740;
+
+  /* --- Shadow --- */
+  --fds-shadow-card: 0px 2px 10px 0px rgba(0, 50, 99, 0.05); /* #0032630D — dark-mode equivalent of shadow-surface */
+  --fds-shadow-button: 0px 2px 4px 0px rgba(0, 52, 99, 0.1);
+  --fds-shadow-button-hover: 0px 2px 6px 0px rgba(0, 52, 99, 0.15);
+}
+
+/* ============================================================================
+ * Typography — Figma type styles (all use "Open Sans")
+ * Format: font-family, font-style/weight, font-size / line-height
+ * Same across light and dark modes.
+ * ============================================================================ */
+:root {
+  --fds-font-family: "Open Sans", sans-serif;
+
+  /* Heading */
+  --fds-heading-s700-size: 24px;
+  --fds-heading-s700-weight: 700; /* Bold */
+  --fds-heading-s700-line-height: 32px;
+
+  /* Body */
+  --fds-body-s400-size: 14px;
+  --fds-body-s400-weight: 400; /* Regular */
+  --fds-body-s400-line-height: 24px;
+
+  --fds-body-m500-size: 16px;
+  --fds-body-m500-weight: 500; /* Medium */
+  --fds-body-m500-line-height: 24px;
+
+  --fds-body-m600-size: 16px;
+  --fds-body-m600-weight: 600; /* SemiBold */
+  --fds-body-m600-line-height: 24px;
+
+  /* Generic Body-S / Body-M (100% line-height variants) */
+  --fds-body-s-size: 14px;
+  --fds-body-s-weight: 400;
+  --fds-body-s-line-height: 100%;
+
+  --fds-body-m-size: 16px;
+  --fds-body-m-weight: 500;
+  --fds-body-m-line-height: 100%;
+
+  /* Label */
+  --fds-label-s400-size: 14px;
+  --fds-label-s400-weight: 400; /* Regular */
+  --fds-label-s400-line-height: 16px;
+
+  --fds-label-s500-size: 14px;
+  --fds-label-s500-weight: 500; /* Medium */
+  --fds-label-s500-line-height: 16px;
+
+  --fds-label-s600-size: 14px;
+  --fds-label-s600-weight: 600; /* SemiBold */
+  --fds-label-s600-line-height: 16px;
+
+  --fds-label-s700-size: 14px;
+  --fds-label-s700-weight: 700; /* Bold */
+  --fds-label-s700-line-height: 16px;
+}

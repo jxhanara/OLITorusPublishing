@@ -146,7 +146,7 @@ export function PublishDashboard() {
                     {includedPendingCount === 1 ? "is" : "are"} selected to include in the next publish.
                   </>
                 ) : (
-                  <span className="text-[#fbbf24]">
+                  <span className="text-[var(--ol-action-edited)]">
                     . Select at least one pending change in the table below (Include column), or none
                     will ship with this publish.
                   </span>
@@ -186,7 +186,7 @@ export function PublishDashboard() {
             value={changeDescription}
             onChange={(e) => setChangeDescription(e.target.value)}
             placeholder="Enter a short description of these changes..."
-            className="min-h-[120px] resize-y rounded border border-[var(--ol-border)] bg-[var(--ol-input-bg)] px-2 py-3 text-base font-normal leading-6 text-[var(--ol-text)] placeholder:text-[var(--ol-text-muted)] focus-visible:border-[#4CA6FF] focus-visible:ring-1 focus-visible:ring-[#4CA6FF]"
+            className="min-h-[120px] resize-y rounded border border-[var(--ol-border)] bg-[var(--ol-input-bg)] px-2 py-3 text-base font-normal leading-6 text-[var(--ol-text)] placeholder:text-[var(--ol-text-muted)] focus-visible:border-[var(--ol-link-strong)] focus-visible:ring-1 focus-visible:ring-[var(--ol-link-strong)]"
           />
 
           <div className="flex items-center gap-2 pt-2">

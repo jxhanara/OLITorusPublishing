@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
@@ -16,9 +16,10 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "./ui/pagination";
-import type { ReactNode } from "react";
+
 import { DiffViewModal } from "./DiffViewModal";
 import { AuthorHoverCard } from "./AuthorHoverCard";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { format } from "date-fns";
 import { cn } from "./ui/utils";
 
@@ -598,41 +599,41 @@ export function getDiffChanges(changeId: string) {
   return undefined;
 }
 
-function SortableHeader({ children }: { children: ReactNode }) {
-  return (
-    <span className="ol-sort-chevron inline-flex items-end gap-1">
-      {children}
-      <ChevronDown className="size-5 shrink-0 text-[var(--ol-table-header-text)]" aria-hidden />
-    </span>
-  );
-}
+type SortKey = "page" | "type" | "author" | "modified" | "version";
+type SortDirection = "asc" | "desc";
 
-type SortDirection = "asc" | "desc" | null;
-
-/** Interactive sortable header (Author). Matches the chevron pattern; active direction shown in accent blue. */
-function SortableButtonHeader({
+/**
+ * Sortable column header. Clicking toggles asc/desc; the caret turns accent blue
+ * on the active column. Non-sortable columns (Description, Actions) render plain text.
+ */
+function SortableHeader({
   children,
+  active,
   direction,
   onToggle,
 }: {
-  children: ReactNode;
+  children: string;
+  active: boolean;
   direction: SortDirection;
   onToggle: () => void;
 }) {
-  const label = direction === "asc" ? "ascending" : direction === "desc" ? "descending" : "not sorted";
+  const stateLabel = active ? (direction === "asc" ? "ascending" : "descending") : "not sorted";
   return (
     <button
       type="button"
       onClick={onToggle}
-      aria-label={`Sort by author, currently ${label}`}
-      className="ol-sort-chevron inline-flex items-end gap-1 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-[#4CA6FF]"
+      aria-label={`Sort by ${children.toLowerCase()}, currently ${stateLabel}`}
+      className="ol-sort-chevron inline-flex items-end gap-1 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--ol-link-strong)]"
     >
       {children}
-      {direction === "asc" ? (
+      {active && direction === "asc" ? (
         <ChevronUp className="size-5 shrink-0 text-[var(--ol-link-strong)]" aria-hidden />
       ) : (
         <ChevronDown
-          className={cn("size-5 shrink-0", direction === "desc" ? "text-[var(--ol-link-strong)]" : "text-[var(--ol-table-header-text)]")}
+          className={cn(
+            "size-5 shrink-0",
+            active ? "text-[var(--ol-link-strong)]" : "text-[var(--ol-table-header-text)]",
+          )}
           aria-hidden
         />
       )}
@@ -641,19 +642,19 @@ function SortableButtonHeader({
 }
 
 /**
- * Action accent for the type tag — left bar + tint match the diff legend (DS values):
- * Added green (#39E581 / #218358), Edited orange (#FF9040 / #4C3F39), Removed red (#FF4040 / #33181A).
- * Tag text stays neutral (#EEEBF5); color is carried by the bar + tint so the chip reads calm.
+ * Action accent for the type tag — tint uses the diff tokens (--ol-diff-*) so it
+ * follows the DS per mode (light #1a7f4b/#c0392b/#b45309, dark #218358/#ff4040/#ff9040).
+ * Tag text stays neutral; color is carried by the icon + tint so the chip reads calm.
  */
 function getActionAccentClasses(action: Change["action"]) {
   switch (action) {
     case "Added":
-      return "bg-[#218358]/18 text-[var(--ol-text)]";
+      return "bg-[var(--ol-diff-added)]/18 text-[var(--ol-text)]";
     case "Removed":
-      return "bg-[#FF6B6B]/15 text-[var(--ol-text)]";
+      return "bg-[var(--ol-diff-removed)]/15 text-[var(--ol-text)]";
     case "Edited":
     default:
-      return "bg-[#FFA24C]/15 text-[var(--ol-text)]";
+      return "bg-[var(--ol-diff-edited)]/15 text-[var(--ol-text)]";
   }
 }
 
@@ -696,6 +697,72 @@ const dsSelectContentClass = "rounded-md border-[var(--ol-border)] bg-[var(--ol-
 /** DS list item — text-low #bab8bf default; highlighted → fill-input-focused + white. Check sits at the right. */
 const dsSelectItemClass =
   "gap-2 rounded-md py-2 pl-2 pr-8 text-sm text-[var(--ol-text-muted)] data-[highlighted]:bg-[var(--ol-chip-bg)] data-[highlighted]:text-[var(--ol-text)]";
+
+function ExpandableDescription({ description }: { description: string }) {
+  const [open, setOpen] = useState(false);
+  const [isTruncated, setIsTruncated] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const clampRef = useRef<HTMLParagraphElement>(null);
+  const measureRef = useRef<HTMLParagraphElement>(null);
+
+  useLayoutEffect(() => {
+    const clampEl = clampRef.current;
+    const measureEl = measureRef.current;
+    if (!clampEl || !measureEl) return;
+
+    const checkTruncation = () => {
+      // line-clamp hides overflow without increasing scrollHeight, so compare against
+      // an unclamped measurement element with the same width instead.
+      setIsTruncated(measureEl.offsetHeight > clampEl.offsetHeight + 1);
+    };
+
+    checkTruncation();
+    const observer = new ResizeObserver(checkTruncation);
+    if (wrapRef.current) observer.observe(wrapRef.current);
+    return () => observer.disconnect();
+  }, [description]);
+
+  const clampedBody = (
+    <p ref={clampRef} className="m-0 line-clamp-2 whitespace-normal">
+      {description}
+    </p>
+  );
+
+  return (
+    <div ref={wrapRef} className="relative min-w-0">
+      <p
+        ref={measureRef}
+        className="pointer-events-none invisible absolute left-0 top-0 m-0 w-full whitespace-normal"
+        aria-hidden
+      >
+        {description}
+      </p>
+      {isTruncated ? (
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="w-full min-w-0 cursor-pointer text-left underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ol-link-strong)]/40"
+              aria-label="View full description"
+              aria-expanded={open}
+            >
+              {clampedBody}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="start"
+            side="bottom"
+            className="z-[100] max-w-sm border-[var(--ol-border)] bg-[var(--ol-input-bg)] p-3 text-sm leading-5 text-[var(--ol-text)] shadow-lg"
+          >
+            {description}
+          </PopoverContent>
+        </Popover>
+      ) : (
+        clampedBody
+      )}
+    </div>
+  );
+}
 
 function ChangeTypeBadge({ change }: { change: Change }) {
   const accent = getActionAccentClasses(change.action);
@@ -744,19 +811,35 @@ export function PublishHistorySection({
   const [filterPage, setFilterPage] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("pending");
-  const [authorSort, setAuthorSort] = useState<SortDirection>(null);
   const [showDiffModal, setShowDiffModal] = useState(false);
   const [selectedDiff, setSelectedDiff] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection }>({
+    key: "modified",
+    direction: "desc",
+  });
 
-  // Author header cycles: none → asc → desc → none.
-  const toggleAuthorSort = () =>
-    setAuthorSort((prev) => (prev === null ? "asc" : prev === "asc" ? "desc" : null));
+  // Clicking the active column flips direction; a new column starts with its natural
+  // order (newest first for dates, A→Z for everything else).
+  const toggleSort = (key: SortKey) =>
+    setSort((prev) =>
+      prev.key === key
+        ? { key, direction: prev.direction === "asc" ? "desc" : "asc" }
+        : { key, direction: key === "modified" ? "desc" : "asc" },
+    );
 
-  // Jump back to the most recent page (page 1) whenever the result set changes.
+  // Jump back to the first page whenever the result set or order changes.
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterPage, filterType, filterStatus, authorSort]);
+  }, [searchQuery, filterPage, filterType, filterStatus, sort]);
+
+  // The Version column only exists on the Published tab; drop back to the default
+  // order if the active sort column disappears when switching tabs.
+  useEffect(() => {
+    if (filterStatus === "pending") {
+      setSort((prev) => (prev.key === "version" ? { key: "modified", direction: "desc" } : prev));
+    }
+  }, [filterStatus]);
 
   // Session-only view of the data: pending changes published this session are
   // promoted to "published" so the Pending tab can show its empty state. Resets
@@ -825,13 +908,32 @@ export function PublishHistorySection({
     return matchesSearch && matchesPage && matchesType && matchesStatus;
   });
 
-  // Default order: most recent first, so page 1 is the newest edits. Author sort overrides when active.
-  const displayedChanges = authorSort
-    ? [...filteredChanges].sort((a, b) => {
-        const cmp = a.author.name.localeCompare(b.author.name, undefined, { sensitivity: "base" });
-        return authorSort === "asc" ? cmp : -cmp;
-      })
-    : [...filteredChanges].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  // Active column sort; ties fall back to most recent first so the order stays stable.
+  const dir = sort.direction === "asc" ? 1 : -1;
+  const byRecency = (a: Change, b: Change) => b.timestamp.getTime() - a.timestamp.getTime();
+  const displayedChanges = [...filteredChanges].sort((a, b) => {
+    let cmp = 0;
+    switch (sort.key) {
+      case "page":
+        cmp = a.page.localeCompare(b.page, undefined, { sensitivity: "base" });
+        break;
+      case "type":
+        cmp = `${a.action} ${a.contentType}`.localeCompare(`${b.action} ${b.contentType}`, undefined, {
+          sensitivity: "base",
+        });
+        break;
+      case "author":
+        cmp = a.author.name.localeCompare(b.author.name, undefined, { sensitivity: "base" });
+        break;
+      case "version":
+        cmp = (a.version ?? "").localeCompare(b.version ?? "", undefined, { numeric: true });
+        break;
+      case "modified":
+        cmp = a.timestamp.getTime() - b.timestamp.getTime();
+        break;
+    }
+    return dir * cmp || byRecency(a, b);
+  });
 
   // Pagination — 7 rows per page; page 1 is the most recent. Anything past the
   // first 7 rolls onto the next page.
@@ -962,8 +1064,8 @@ export function PublishHistorySection({
                 className={cn(
                   "flex-none gap-2 rounded-sm border-0 px-3 py-0 text-sm font-medium text-[var(--ol-text-muted)] transition-colors",
                   "hover:text-[var(--ol-text)]",
-                  "data-[state=active]:bg-[#0062F2] data-[state=active]:text-white data-[state=active]:shadow-sm",
-                  "dark:text-[var(--ol-text-muted)] dark:data-[state=active]:border-transparent dark:data-[state=active]:bg-[#0062F2] dark:data-[state=active]:text-white",
+                  "data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm",
+                  "dark:text-[var(--ol-text-muted)] dark:data-[state=active]:border-transparent dark:data-[state=active]:bg-primary dark:data-[state=active]:text-white",
                 )}
               >
                 {tab.label}
@@ -999,39 +1101,38 @@ export function PublishHistorySection({
                     </div>
                   </TableHead>
                 ) : null}
-                <TableHead className="h-auto">
-                  <SortableHeader>Page</SortableHeader>
+                <TableHead className="h-auto" aria-sort={sort.key === "page" ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}>
+                  <SortableHeader active={sort.key === "page"} direction={sort.direction} onToggle={() => toggleSort("page")}>
+                    Page
+                  </SortableHeader>
                 </TableHead>
-                <TableHead className="h-auto">
-                  <SortableHeader>Type</SortableHeader>
+                <TableHead className="h-auto" aria-sort={sort.key === "type" ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}>
+                  <SortableHeader active={sort.key === "type"} direction={sort.direction} onToggle={() => toggleSort("type")}>
+                    Type
+                  </SortableHeader>
                 </TableHead>
                 {showDescriptionColumn ? (
-                  <TableHead className="h-auto">
-                    <SortableHeader>Description</SortableHeader>
-                  </TableHead>
+                  <TableHead className="h-auto">Description</TableHead>
                 ) : null}
-                <TableHead
-                  className="h-auto"
-                  aria-sort={authorSort === "asc" ? "ascending" : authorSort === "desc" ? "descending" : "none"}
-                >
-                  <SortableButtonHeader direction={authorSort} onToggle={toggleAuthorSort}>
+                <TableHead className="h-auto" aria-sort={sort.key === "author" ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}>
+                  <SortableHeader active={sort.key === "author"} direction={sort.direction} onToggle={() => toggleSort("author")}>
                     Author
-                  </SortableButtonHeader>
+                  </SortableHeader>
                 </TableHead>
-                <TableHead className="h-auto">
-                  <SortableHeader>Modified</SortableHeader>
+                <TableHead className="h-auto" aria-sort={sort.key === "modified" ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}>
+                  <SortableHeader active={sort.key === "modified"} direction={sort.direction} onToggle={() => toggleSort("modified")}>
+                    Modified
+                  </SortableHeader>
                 </TableHead>
-                <TableHead className="h-auto">
-                  <SortableHeader>Status</SortableHeader>
-                </TableHead>
+                <TableHead className="h-auto">Status</TableHead>
                 {showVersionColumn ? (
-                  <TableHead className="h-auto">
-                    <SortableHeader>Version</SortableHeader>
+                  <TableHead className="h-auto" aria-sort={sort.key === "version" ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}>
+                    <SortableHeader active={sort.key === "version"} direction={sort.direction} onToggle={() => toggleSort("version")}>
+                      Version
+                    </SortableHeader>
                   </TableHead>
                 ) : null}
-                <TableHead className="h-auto">
-                  <SortableHeader>Actions</SortableHeader>
-                </TableHead>
+                <TableHead className="h-auto">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1071,9 +1172,7 @@ export function PublishHistorySection({
                   </TableCell>
                   {showDescriptionColumn ? (
                     <TableCell className="max-w-md font-normal">
-                      <span className="line-clamp-2 whitespace-normal" title={change.description}>
-                        {change.description}
-                      </span>
+                      <ExpandableDescription description={change.description} />
                     </TableCell>
                   ) : null}
                   <TableCell>
